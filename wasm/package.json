@@ -1,0 +1,56 @@
+{
+    "name": "@gaussforge/wasm",
+    "version": "0.1.0",
+    "type": "module",
+    "description": "GaussForge WASM library for Gaussian Splatting format conversion",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "module": "dist/index.esm.js",
+    "exports": {
+        ".": {
+            "import": "./dist/index.esm.js",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "gauss_forge.js",
+        "gauss_forge.wasm",
+        "README.md",
+        "package.json"
+    ],
+    "scripts": {
+        "build": "npm run build:wasm && npm run build:ts",
+        "build:wasm": "node build-wasm.js",
+        "build:ts": "tsc && rollup -c",
+        "prepublishOnly": "npm run build",
+        "publish": "npm publish --access public"
+    },
+    "keywords": [
+        "gaussian-splatting",
+        "3d",
+        "point-cloud",
+        "wasm",
+        "format-conversion"
+    ],
+    "author": "tcodestudio",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@rollup/plugin-typescript": "^11.1.5",
+        "@types/node": "^20.10.0",
+        "rollup": "^4.6.0",
+        "tslib": "^2.8.1",
+        "typescript": "^5.3.3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tcodestudio/GaussForge.git",
+        "directory": "wasm"
+    },
+    "bugs": {
+        "url": "https://github.com/tcodestudio/GaussForge/issues"
+    },
+    "homepage": "https://github.com/tcodestudio/GaussForge"
+}

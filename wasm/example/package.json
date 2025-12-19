@@ -1,0 +1,13 @@
+{
+    "name": "gaussforge-wasm-example",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Example code - Test @gaussforge/wasm npm package (local installation)",
+    "scripts": {
+        "test": "node test.js",
+        "install-local": "npm install file:.."
+    },
+    "dependencies": {
+        "@gaussforge/wasm": "file:.."
+    }
+}

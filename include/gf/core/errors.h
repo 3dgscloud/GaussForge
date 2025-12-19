@@ -1,0 +1,34 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <utility>
+
+namespace gf {
+
+struct Error {
+  std::string message;
+};
+
+inline Error MakeError(std::string msg) { return Error{std::move(msg)}; }
+
+template <typename T> class Expected {
+public:
+  Expected(const T &value) : value_(value) {}
+  Expected(T &&value) : value_(std::move(value)) {}
+  Expected(const Error &error) : error_(error) {}
+  Expected(Error &&error) : error_(std::move(error)) {}
+
+  bool ok() const { return value_.has_value(); }
+  explicit operator bool() const { return ok(); }
+
+  const T &value() const { return *value_; }
+  T &value() { return *value_; }
+  const Error &error() const { return *error_; }
+
+private:
+  std::optional<T> value_;
+  std::optional<Error> error_;
+};
+
+} // namespace gf

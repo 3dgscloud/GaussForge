@@ -1,0 +1,28 @@
+# Files to ignore when publishing to npm
+
+# Source code (not published)
+*.ts
+!dist/**/*.d.ts
+src/
+build-wasm.js
+tsconfig.json
+rollup.config.js
+
+# Development files (not published)
+example/
+*.md
+!README.md
+server.js
+NPM_DISTRIBUTION.md
+
+# Build temporary files
+build-wasm/
+.cache/
+
+# Development dependencies
+node_modules/
+package-lock.json
+
+# Emscripten SDK (if present)
+.emsdk/
+
