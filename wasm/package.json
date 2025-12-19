@@ -46,11 +46,11 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/tcodestudio/GaussForge.git",
+        "url": "git+https://github.com/3dgscloud/GaussForge.git",
         "directory": "wasm"
     },
     "bugs": {
-        "url": "https://github.com/tcodestudio/GaussForge/issues"
+        "url": "https://github.com/3dgscloud/GaussForge/issues"
     },
-    "homepage": "https://github.com/tcodestudio/GaussForge"
+    "homepage": "https://github.com/3dgscloud/GaussForge"
 }
