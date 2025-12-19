@@ -131,7 +131,7 @@ const converted = await gaussForge.convert(fileData, 'ply', 'spz');
 
 For detailed WASM usage and API documentation, see the [WASM README](wasm/README.md).
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 GaussForge/
