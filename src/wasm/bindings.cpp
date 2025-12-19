@@ -10,6 +10,7 @@
 
 #include "gf/core/gauss_ir.h"
 #include "gf/core/validate.h"
+#include "gf/core/version.h"
 #include "gf/io/registry.h"
 
 #ifdef __EMSCRIPTEN__
@@ -188,6 +189,8 @@ public:
     return f;
   }
 
+  std::string getVersion() { return GAUSS_FORGE_VERSION_STRING; }
+
 private:
   std::unique_ptr<gf::IORegistry> registry_;
   val err(const std::string &m) {
@@ -203,6 +206,7 @@ EMSCRIPTEN_BINDINGS(gauss_forge) {
       .function("read", &GaussForgeWASM::read)
       .function("write", &GaussForgeWASM::write)
       .function("convert", &GaussForgeWASM::convert)
-      .function("getSupportedFormats", &GaussForgeWASM::getSupportedFormats);
+      .function("getSupportedFormats", &GaussForgeWASM::getSupportedFormats)
+      .function("getVersion", &GaussForgeWASM::getVersion);
 }
 #endif

@@ -5,6 +5,7 @@
 
 #include "gf/core/gauss_ir.h"
 #include "gf/core/validate.h"
+#include "gf/core/version.h"
 #include "gf/io/reader.h"
 #include "gf/io/registry.h"
 #include "gf/io/writer.h"
@@ -12,7 +13,8 @@
 namespace {
 
 std::string GetExt(const std::string &path) {
-  // Special handling for .compressed.ply double-suffix format to avoid truncating to just ply
+  // Special handling for .compressed.ply double-suffix format to avoid
+  // truncating to just ply
   constexpr std::string_view kCompressed = "compressed.ply";
   if (path.size() >= kCompressed.size() &&
       path.compare(path.size() - kCompressed.size(), kCompressed.size(),
@@ -29,9 +31,16 @@ std::string GetExt(const std::string &path) {
 } // namespace
 
 int main(int argc, char **argv) {
+  // Handle --version flag
+  if (argc >= 2 && std::string(argv[1]) == "--version") {
+    std::cout << "gfconvert version " << GAUSS_FORGE_VERSION_STRING << "\n";
+    return 0;
+  }
+
   if (argc < 3) {
     std::cerr << "Usage: gfconvert <input> <output> "
                  "[--in-format ext] [--out-format ext]\n";
+    std::cerr << "       gfconvert --version\n";
     return 1;
   }
 
@@ -125,6 +134,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  std::cout << "Conversion completed: " << in_path << " -> " << out_path << "\n";
+  std::cout << "Conversion completed: " << in_path << " -> " << out_path
+            << "\n";
   return 0;
 }

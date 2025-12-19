@@ -36,6 +36,10 @@ async function test() {
         const gaussForge = await createGaussForge();
         console.log('   ✅ Initialization successful\n');
 
+        console.log('0️⃣  Printing version...');
+        const version = gaussForge.getVersion();
+        console.log(`   ✅ Version: ${version}\n`);
+
         // 3. Get supported formats
         console.log('2️⃣  Getting supported formats...');
         const formats = gaussForge.getSupportedFormats();

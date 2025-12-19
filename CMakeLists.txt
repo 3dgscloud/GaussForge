@@ -1,12 +1,19 @@
 cmake_minimum_required(VERSION 3.26)
 project(gauss_forge
-    VERSION 0.1.1
+    VERSION 0.1.2
     DESCRIPTION "A high-performance Gaussian Splatting format conversion library"
     LANGUAGES CXX C
 )
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Generate version header from template
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/gf/core/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/gf/core/version.h
+    @ONLY
+)
 
 include(FetchContent)
 
@@ -59,6 +66,7 @@ set(GAUSS_FORGE_SOURCES
 add_library(gauss_forge STATIC ${GAUSS_FORGE_SOURCES})
 target_include_directories(gauss_forge PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 # Ensure all targets can link to spz
 target_link_libraries(gauss_forge PUBLIC spz::spz)

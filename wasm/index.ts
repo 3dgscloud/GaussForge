@@ -37,6 +37,7 @@ interface GaussForgeWASMInstance {
         strict?: boolean
     ): ConvertResult | { error: string };
     getSupportedFormats(): string[];
+    getVersion(): string;
 }
 
 // Module loader type
@@ -210,6 +211,15 @@ export class GaussForge {
      */
     isFormatSupported(format: string): boolean {
         return this.getSupportedFormats().includes(format as SupportedFormat);
+    }
+
+    /**
+     * Get library version
+     * @returns Version string
+     */
+    getVersion(): string {
+        this.ensureInitialized();
+        return this.instance!.getVersion();
     }
 }
 
