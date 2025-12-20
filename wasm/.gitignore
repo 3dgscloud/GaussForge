@@ -3,6 +3,7 @@ dist/
 build-wasm/
 *.js.map
 *.d.ts.map
-gauss_forge.js
-gauss_forge.wasm
+gauss_forge.web.js
+gauss_forge.node.js
+
 

@@ -3,23 +3,22 @@
     "version": "0.1.2",
     "type": "module",
     "description": "GaussForge WASM library for Gaussian Splatting format conversion",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "module": "dist/index.esm.js",
+    "main": "dist/index.web.js",
+    "types": "dist/index.web.d.ts",
+    "module": "dist/index.web.js",
     "exports": {
         ".": {
-            "import": "./dist/index.esm.js",
-            "require": "./dist/index.js",
+            "browser": "./dist/index.web.js",
+            "node": "./dist/index.node.js",
+            "import": "./dist/index.web.js",
+            "require": "./dist/index.node.js",
             "types": "./dist/index.d.ts"
         },
         "./package.json": "./package.json"
     },
     "files": [
         "dist",
-        "gauss_forge.js",
-        "gauss_forge.wasm",
-        "README.md",
-        "package.json"
+        "README.md"
     ],
     "scripts": {
         "build": "npm run build:wasm && npm run build:ts",

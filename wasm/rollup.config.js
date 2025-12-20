@@ -1,42 +1,35 @@
 import typescript from '@rollup/plugin-typescript';
 
+const webExternal = ['./gauss_forge.web.js'];
+const nodeExternal = ['./gauss_forge.node.js', 'path', 'fs', 'module', 'crypto', 'url'];
+
 export default [
-  // ESM build
   {
-    input: 'index.ts',
+    input: 'index.web.ts',
     output: {
-      file: 'dist/index.esm.js',
+      dir: 'dist',
+      entryFileNames: 'index.web.js',
       format: 'es',
       sourcemap: true,
-      inlineDynamicImports: false, // Keep dynamic imports, WASM file needs runtime loading
     },
     plugins: [
-      typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
-        declarationMap: false,
-      }),
+      typescript({ tsconfig: './tsconfig.json', declaration: true, declarationDir: 'dist', declarationMap: true, }),
     ],
-    external: [],
+    external: webExternal,
   },
-  // CommonJS build
   {
-    input: 'index.ts',
-    output: {
-      file: 'dist/index.js',
-      format: 'cjs',
-      sourcemap: true,
-      exports: 'named',
-      inlineDynamicImports: false, // Keep dynamic imports, WASM file needs runtime loading
-    },
-    plugins: [
-      typescript({
-        tsconfig: './tsconfig.json',
-        declaration: false,
-        declarationMap: false,
-      }),
+    input: 'index.node.ts',
+    output: [
+      {
+        dir: 'dist',
+        entryFileNames: 'index.node.js',
+        format: 'es',
+        sourcemap: true,
+      }
     ],
-    external: [],
+    plugins: [
+      typescript({ tsconfig: './tsconfig.json', declaration: true, declarationDir: 'dist', declarationMap: true }),
+    ],
+    external: nodeExternal,
   },
 ];
-
