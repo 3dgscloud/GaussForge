@@ -62,41 +62,43 @@ export class GaussForge {
 
         this.initPromise = (async () => {
             try {
-                let moduleInstance: EmscriptenModule;
+                let moduleInstance: any; // 先使用 any 接收原始实例
 
                 if (moduleFactory) {
                     moduleInstance = moduleFactory();
                 } else {
-                    // Default load from package root (in npm package) or current directory (during development)
-                    // Dynamically import Emscripten-generated module
-                    // @ts-ignore - May not exist during development, will have error at runtime
-                    // In npm package, gauss_forge.js is in package root, need to find from dist/ up
-                    const wasmPath = typeof __dirname !== 'undefined'
-                        ? require('path').join(__dirname, '..', 'gauss_forge.js')  // CommonJS
-                        : new URL('../gauss_forge.js', import.meta.url).href;      // ES Module
-                    const createModule = await import(wasmPath);
+                    // 1. 动态导入生成的 JS
+                    // @ts-ignore
+                    const createModule = await import('./gauss_forge.web.js');
 
-                    // Emscripten module may be a function or object
-                    if (typeof createModule.default === 'function') {
-                        moduleInstance = createModule.default();
-                    } else if (createModule.default && typeof (createModule.default as any).then === 'function') {
-                        // If it's a Promise, wait for it to complete
-                        moduleInstance = await (createModule.default as any);
+                    // 2. 这里的 createModule.default 通常是工厂函数
+                    const factory = createModule.default;
+
+                    if (typeof factory === 'function') {
+                        // 执行工厂函数，它通常返回一个 Promise
+                        const result = factory();
+                        // 检查是否返回了 Promise (Emscripten MODULARIZE=1 的标准行为)
+                        moduleInstance = (result && typeof result.then === 'function')
+                            ? await result
+                            : result;
                     } else {
-                        moduleInstance = createModule.default as EmscriptenModule;
+                        moduleInstance = factory;
                     }
                 }
 
-                // Wait for module to fully initialize (if module is a Promise)
-                if (moduleInstance && 'then' in moduleInstance && typeof (moduleInstance as any).then === 'function') {
-                    moduleInstance = await (moduleInstance as any);
+                // 3. 再次确保如果 moduleInstance 本身还是个 Promise，则等待它
+                if (moduleInstance && typeof moduleInstance.then === 'function') {
+                    moduleInstance = await moduleInstance;
                 }
 
-                if (!moduleInstance || !moduleInstance.GaussForgeWASM) {
+                // 4. 此时 moduleInstance 应该是真正的 EmscriptenModule 了
+                const finalModule = moduleInstance as EmscriptenModule;
+
+                if (!finalModule || !finalModule.GaussForgeWASM) {
                     throw new Error('Failed to initialize WASM module: GaussForgeWASM not found');
                 }
 
-                this.module = moduleInstance;
+                this.module = finalModule;
                 this.instance = new this.module.GaussForgeWASM();
             } catch (error) {
                 this.initPromise = null;
@@ -106,6 +108,26 @@ export class GaussForge {
         })();
 
         return this.initPromise;
+    }
+
+    private cloneFromWasm<T>(data: T): T {
+        if (!data || typeof data !== 'object') return data;
+
+        // 如果是 Uint8Array，执行 slice() 或 new Uint8Array() 
+        // 这一步会分配 JS 引擎管理的内存，不再受 WASM 内存扩容影响
+        if (data instanceof Uint8Array) {
+            return new Uint8Array(data) as any;
+        }
+
+        if (Array.isArray(data)) {
+            return data.map(item => this.cloneFromWasm(item)) as any;
+        }
+
+        const copy: any = {};
+        for (const key in data) {
+            copy[key] = this.cloneFromWasm((data as any)[key]);
+        }
+        return copy;
     }
 
     /**
@@ -138,7 +160,7 @@ export class GaussForge {
             throw new Error(result.error);
         }
 
-        return result as ReadResult;
+        return this.cloneFromWasm(result) as ReadResult;
     }
 
     /**
@@ -161,7 +183,7 @@ export class GaussForge {
             throw new Error(result.error);
         }
 
-        return result as WriteResult;
+        return this.cloneFromWasm(result) as WriteResult;
     }
 
     /**
@@ -192,7 +214,7 @@ export class GaussForge {
             throw new Error(result.error);
         }
 
-        return result as ConvertResult;
+        return this.cloneFromWasm(result) as ConvertResult;
     }
 
     /**

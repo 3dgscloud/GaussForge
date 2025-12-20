@@ -70,8 +70,8 @@ function setupBuildDir() {
 }
 
 // Run CMake configuration
-function configureCMake() {
-    console.log('Configuring CMake...');
+function configureCMake(environment) {
+    console.log(`Configuring CMake for ${environment} environment...`);
     const emsdkPath = process.env.EMSDK || '';
     let emcmake = 'emcmake';
 
@@ -84,7 +84,7 @@ function configureCMake() {
 
     try {
         execSync(
-            `${emcmake} cmake -B ${BUILD_DIR} -S ${PROJECT_ROOT} -DCMAKE_BUILD_TYPE=Release`,
+            `${emcmake} cmake -B ${BUILD_DIR} -S ${PROJECT_ROOT} -DCMAKE_BUILD_TYPE=Release -DWASM_ENVIRONMENT=${environment}`,
             { stdio: 'inherit', cwd: PROJECT_ROOT, env: process.env }
         );
     } catch (error) {
@@ -108,8 +108,8 @@ function buildWASM() {
 }
 
 // Copy generated files
-function copyOutputFiles() {
-    console.log('Copying output files...');
+function copyOutputFiles(outputName) {
+    console.log(`Copying output files for ${outputName}...`);
     const jsFile = path.join(BUILD_DIR, 'gauss_forge.js');
     const wasmFile = path.join(BUILD_DIR, 'gauss_forge.wasm');
 
@@ -118,13 +118,23 @@ function copyOutputFiles() {
         process.exit(1);
     }
 
-    fs.copyFileSync(jsFile, path.join(WASM_DIR, 'gauss_forge.js'));
-    console.log(`✓ Copied ${jsFile} -> ${path.join(WASM_DIR, 'gauss_forge.js')}`);
+    const outputJsFile = path.join(WASM_DIR, `${outputName}.js`);
+    fs.copyFileSync(jsFile, outputJsFile);
+    console.log(`✓ Copied ${jsFile} -> ${outputJsFile}`);
 
     if (fs.existsSync(wasmFile)) {
-        fs.copyFileSync(wasmFile, path.join(WASM_DIR, 'gauss_forge.wasm'));
-        console.log(`✓ Copied ${wasmFile} -> ${path.join(WASM_DIR, 'gauss_forge.wasm')}`);
+        const outputWasmFile = path.join(WASM_DIR, `${outputName}.wasm`);
+        fs.copyFileSync(wasmFile, outputWasmFile);
+        console.log(`✓ Copied ${wasmFile} -> ${outputWasmFile}`);
     }
+}
+
+// Build a specific version
+function buildVersion(environment, outputName) {
+    console.log(`\n=== Building ${outputName} version (${environment}) ===\n`);
+    configureCMake(environment);
+    buildWASM();
+    copyOutputFiles(outputName);
 }
 
 // Main function
@@ -136,14 +146,23 @@ function main() {
     }
 
     setupBuildDir();
-    configureCMake();
-    buildWASM();
-    copyOutputFiles();
+
+    // Build Node version
+    buildVersion('node', 'gauss_forge.node');
+
+    // Clean and rebuild for Web version
+    setupBuildDir();
+
+    // Build Web version
+    buildVersion('web,worker', 'gauss_forge.web');
 
     // clean build directory
     fs.rmSync(BUILD_DIR, { recursive: true });
     console.log(`✓ Cleaned build directory ${BUILD_DIR}`);
     console.log('\n✓ WASM build complete!');
+    console.log('Generated files:');
+    console.log('  - gauss_forge.node.js (Node.js version)');
+    console.log('  - gauss_forge.web.js (Web/Worker version)');
 }
 
 main();
