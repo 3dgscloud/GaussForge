@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createGaussForge, type GaussForge, type SupportedFormat } from '@gaussforge/wasm';
 
 export default function Home() {
-    // 1. 存储 GaussForge 实例
+    // 1. Store GaussForge instance
     const [gf, setGf] = useState<GaussForge | null>(null);
     const [supportedFormats, setSupportedFormats] = useState<SupportedFormat[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -26,7 +26,7 @@ export default function Home() {
     const [inFormat, setInFormat] = useState<SupportedFormat>('ply');
     const [outFormat, setOutFormat] = useState<SupportedFormat>('splat');
 
-    // 2. 组件加载时初始化 WASM
+    // 2. Initialize WASM when component loads
     useEffect(() => {
         async function initWasm() {
             try {
@@ -45,16 +45,33 @@ export default function Home() {
         if (!file) return;
 
         setSelectedFile(file);
+
+        let detectedFormat: string = 'unknown';
+        let detectedSupportedFormat: SupportedFormat | null = null;
+
+        const fileName = file.name.toLowerCase();
+        if (fileName.endsWith('.compressed.ply')) {
+            detectedFormat = 'compressed.ply';
+            detectedSupportedFormat = 'compressed.ply';
+        } else {
+            const ext = file.name.split('.').pop()?.toLowerCase();
+            const validFormats: SupportedFormat[] = ['ply', 'splat', 'ksplat', 'spz'];
+            if (ext && validFormats.includes(ext as SupportedFormat)) {
+                detectedFormat = ext;
+                detectedSupportedFormat = ext as SupportedFormat;
+            } else if (ext) {
+                detectedFormat = ext;
+            }
+        }
+
         setFileInfo({
             name: file.name,
             size: file.size,
-            format: file.name.split('.').pop() || 'unknown',
+            format: detectedFormat,
         });
 
-        const ext = file.name.split('.').pop()?.toLowerCase();
-        const validFormats: SupportedFormat[] = ['ply', 'splat', 'ksplat', 'spz'];
-        if (validFormats.includes(ext as SupportedFormat)) {
-            setInFormat(ext as SupportedFormat);
+        if (detectedSupportedFormat) {
+            setInFormat(detectedSupportedFormat);
         }
 
         setReadResult(null);
@@ -69,7 +86,7 @@ export default function Home() {
 
         try {
             const arrayBuffer = await selectedFile.arrayBuffer();
-            // 使用实例方法 gf.read
+            // Use instance method gf.read
             const result = await gf.read(arrayBuffer, inFormat);
 
             setReadResult({
@@ -97,7 +114,7 @@ export default function Home() {
 
         try {
             const arrayBuffer = await selectedFile.arrayBuffer();
-            // 使用实例方法 gf.convert
+            // Use instance method gf.convert
             const result = await gf.convert(
                 arrayBuffer,
                 inFormat,
@@ -119,7 +136,7 @@ export default function Home() {
 
     const handleDownload = () => {
         if (convertStatus.data) {
-            const blob = new Blob([convertStatus.data], { type: 'application/octet-stream' });
+            const blob = new Blob([new Uint8Array(convertStatus.data)], { type: 'application/octet-stream' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -146,7 +163,7 @@ export default function Home() {
                     <input
                         id="file-input"
                         type="file"
-                        accept=".ply,.splat,.ksplat,.spz"
+                        accept=".ply,.compressed.ply,.splat,.ksplat,.spz"
                         onChange={handleFileSelect}
                     />
                 </div>

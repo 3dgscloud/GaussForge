@@ -3,9 +3,9 @@
     "version": "0.1.2",
     "type": "module",
     "description": "GaussForge WASM library for Gaussian Splatting format conversion",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "module": "dist/index.esm.js",
+    "main": "dist/index.web.js",
+    "types": "dist/index.web.d.ts",
+    "module": "dist/index.web.js",
     "exports": {
         ".": {
             "browser": "./dist/index.web.js",
