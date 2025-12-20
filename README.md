@@ -4,6 +4,18 @@
   <img src="icon.png" alt="GaussForge Logo" width="128">
 </div>
 
+<div align="center">
+
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+![C++](https://img.shields.io/badge/C++-17-blue.svg)
+![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)
+![npm](https://img.shields.io/npm/v/@gaussforge/wasm?label=npm)
+[![GitHub Release](https://img.shields.io/github/v/release/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/releases)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/commits)
+
+</div>
+
 A high-performance Gaussian Splatting format conversion library that supports lossless conversion between multiple mainstream formats.
 
 ## Online Viewer
