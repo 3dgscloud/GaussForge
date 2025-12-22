@@ -15,7 +15,7 @@ namespace {
 std::string GetExt(const std::string &path) {
   // Special handling for .compressed.ply double-suffix format to avoid
   // truncating to just ply
-  constexpr std::string_view kCompressed = "compressed.ply";
+  constexpr std::string_view kCompressed = ".compressed.ply";
   if (path.size() >= kCompressed.size() &&
       path.compare(path.size() - kCompressed.size(), kCompressed.size(),
                    kCompressed) == 0) {

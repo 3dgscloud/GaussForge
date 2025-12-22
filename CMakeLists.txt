@@ -50,6 +50,7 @@ include(cmakes/spz.cmake)
 set(GAUSS_FORGE_SOURCES
     src/core/validate.cpp
     src/io/registry.cpp
+    src/io/ply_auto.cpp
     src/io/ply_compressed_reader.cpp
     src/io/ply_compressed_writer.cpp
     src/io/ply_reader.cpp
