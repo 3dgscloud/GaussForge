@@ -170,7 +170,10 @@ public:
             MakeError("ply read failed: insufficient data"));
       }
 
-      std::vector<float> values(static_cast<size_t>(numPoints) * fields.size());
+      // Pre-allocate vector and use memcpy for efficient bulk copy
+      // Compiler can optimize memcpy with SIMD instructions
+      const size_t numValues = static_cast<size_t>(numPoints) * fields.size();
+      std::vector<float> values(numValues);
       std::memcpy(values.data(), current, dataSize);
       current += dataSize;
       remaining -= dataSize;
@@ -179,31 +182,78 @@ public:
       ir.numPoints = numPoints;
       ir.meta.shDegree = degreeForDim(shDim);
       ir.meta.sourceFormat = "ply";
-      ir.positions.reserve(numPoints * 3);
-      ir.scales.reserve(numPoints * 3);
-      ir.rotations.reserve(numPoints * 4);
-      ir.alphas.reserve(numPoints);
-      ir.colors.reserve(numPoints * 3);
-      ir.sh.reserve(numPoints * shDim * 3);
 
+      // Pre-allocate all vectors to avoid reallocation overhead
+      // This helps compiler optimize memory access patterns
+      ir.positions.resize(numPoints * 3);
+      ir.scales.resize(numPoints * 3);
+      ir.rotations.resize(numPoints * 4);
+      ir.alphas.resize(numPoints);
+      ir.colors.resize(numPoints * 3);
+      ir.sh.resize(numPoints * shDim * 3);
+
+      // Use pointers for direct writes to enable better compiler optimization
+      // __restrict__ hints compiler that pointers don't alias
+      float *__restrict__ posPtr = ir.positions.data();
+      float *__restrict__ scalePtr = ir.scales.data();
+      float *__restrict__ rotPtr = ir.rotations.data();
+      float *__restrict__ alphaPtr = ir.alphas.data();
+      float *__restrict__ colorPtr = ir.colors.data();
+      float *__restrict__ shPtr = ir.sh.data();
+
+      const float *__restrict__ valuesPtr = values.data();
       const size_t stride = fields.size();
-      for (int i = 0; i < numPoints; ++i) {
-        const float *base = &values[static_cast<size_t>(i) * stride];
-        for (int j = 0; j < 3; ++j)
-          ir.positions.push_back(base[posIdx[j]]);
-        for (int j = 0; j < 3; ++j)
-          ir.scales.push_back(base[scaleIdx[j]]);
-        for (int j = 0; j < 4; ++j)
-          ir.rotations.push_back(base[rotIdx[j]]);
-        ir.alphas.push_back(base[alphaIdx]);
-        for (int j = 0; j < 3; ++j)
-          ir.colors.push_back(base[colorIdx[j]]);
 
-        // Store SH coefficients in interleaved RGB order per coefficient.
+      // Cache field indices in local variables for better register allocation
+      const int pos0 = posIdx[0], pos1 = posIdx[1], pos2 = posIdx[2];
+      const int scale0 = scaleIdx[0], scale1 = scaleIdx[1],
+                scale2 = scaleIdx[2];
+      const int rot0 = rotIdx[0], rot1 = rotIdx[1], rot2 = rotIdx[2],
+                rot3 = rotIdx[3];
+      const int color0 = colorIdx[0], color1 = colorIdx[1],
+                color2 = colorIdx[2];
+
+      // Optimized loop: direct writes with pointer arithmetic
+      // Compiler can auto-vectorize this pattern easily
+      for (int i = 0; i < numPoints; ++i) {
+        const float *__restrict__ base =
+            valuesPtr + static_cast<size_t>(i) * stride;
+
+        // Write positions (3 floats) - contiguous writes enable SIMD
+        posPtr[0] = base[pos0];
+        posPtr[1] = base[pos1];
+        posPtr[2] = base[pos2];
+        posPtr += 3;
+
+        // Write scales (3 floats)
+        scalePtr[0] = base[scale0];
+        scalePtr[1] = base[scale1];
+        scalePtr[2] = base[scale2];
+        scalePtr += 3;
+
+        // Write rotations (4 floats)
+        rotPtr[0] = base[rot0];
+        rotPtr[1] = base[rot1];
+        rotPtr[2] = base[rot2];
+        rotPtr[3] = base[rot3];
+        rotPtr += 4;
+
+        // Write alpha (1 float)
+        *alphaPtr++ = base[alphaIdx];
+
+        // Write colors (3 floats)
+        colorPtr[0] = base[color0];
+        colorPtr[1] = base[color1];
+        colorPtr[2] = base[color2];
+        colorPtr += 3;
+
+        // Store SH coefficients in interleaved RGB order per coefficient
+        // Unroll inner loop for better optimization
         for (int j = 0; j < shDim; ++j) {
-          ir.sh.push_back(base[shIdx[j]]);             // coeff j, R
-          ir.sh.push_back(base[shIdx[j + shDim]]);     // coeff j, G
-          ir.sh.push_back(base[shIdx[j + 2 * shDim]]); // coeff j, B
+          shPtr[0] = base[shIdx[j]];             // coeff j, R
+          shPtr[1] = base[shIdx[j + shDim]];     // coeff j, G
+          shPtr[2] = base[shIdx[j + 2 * shDim]]; // coeff j, B
+          shPtr += 3;
         }
       }
 
