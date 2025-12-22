@@ -2,6 +2,7 @@
 
 #include "gf/io/ksplat.h"
 #include "gf/io/ply.h"
+#include "gf/io/ply_auto.h"
 #include "gf/io/ply_compressed.h"
 #include "gf/io/splat.h"
 #include "gf/io/spz.h"
@@ -20,7 +21,7 @@ IORegistry::IORegistry() {
   // Built-in registrations
   RegisterReader({"spz"}, gf::MakeSpzReader());
   RegisterWriter({"spz"}, gf::MakeSpzWriter());
-  RegisterReader({"ply"}, gf::MakePlyReader());
+  RegisterReader({"ply"}, gf::MakePlyAutoReader());
   RegisterWriter({"ply"}, gf::MakePlyWriter());
   RegisterReader({"compressed.ply"}, gf::MakePlyCompressedReader());
   RegisterWriter({"compressed.ply"}, gf::MakePlyCompressedWriter());
