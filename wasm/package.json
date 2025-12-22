@@ -1,6 +1,6 @@
 {
     "name": "@gaussforge/wasm",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "type": "module",
     "description": "GaussForge WASM library for Gaussian Splatting format conversion",
     "main": "dist/index.web.js",
