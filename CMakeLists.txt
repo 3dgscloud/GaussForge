@@ -90,4 +90,5 @@ else()
     # Local command-line tool
     add_executable(gfconvert src/cli/main.cpp)
     target_link_libraries(gfconvert PRIVATE gauss_forge)
+    add_subdirectory(tests)
 endif()
