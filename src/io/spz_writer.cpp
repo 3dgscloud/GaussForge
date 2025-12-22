@@ -26,15 +26,16 @@ spz::GaussianCloud ToSpz(const GaussianCloudIR &ir) {
 
   g.rotations.resize(ir.rotations.size());
   for (int i = 0; i < ir.numPoints; ++i) {
-    float w = ir.rotations[i * 4 + 0];
-    float x = ir.rotations[i * 4 + 1];
-    float y = ir.rotations[i * 4 + 2];
-    float z = ir.rotations[i * 4 + 3];
+    const size_t idx = i * 4;
+    float w = ir.rotations[idx + 0];
+    float x = ir.rotations[idx + 1];
+    float y = ir.rotations[idx + 2];
+    float z = ir.rotations[idx + 3];
 
-    g.rotations[i * 4 + 0] = x;
-    g.rotations[i * 4 + 1] = y;
-    g.rotations[i * 4 + 2] = z;
-    g.rotations[i * 4 + 3] = w;
+    g.rotations[idx + 0] = x;
+    g.rotations[idx + 1] = y;
+    g.rotations[idx + 2] = z;
+    g.rotations[idx + 3] = w;
   }
   return g;
 }
