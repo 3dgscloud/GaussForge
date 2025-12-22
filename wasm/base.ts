@@ -62,33 +62,6 @@ export abstract class GaussForgeBase {
         return this.initPromise;
     }
 
-    /**
-     * Core memory safety: Clone data
-     * Deep copy WASM memory view to JS heap to prevent Detached ArrayBuffer errors
-     * Handles all TypedArray types to ensure proper memory management
-     */
-    protected cloneFromWasm<T>(data: T): T {
-        if (!data || typeof data !== 'object') return data;
-
-        // Handle all TypedArray types
-        if (data instanceof Uint8Array) return new Uint8Array(data) as any;
-        if (data instanceof Float32Array) return new Float32Array(data) as any;
-        if (data instanceof Int8Array) return new Int8Array(data) as any;
-        if (data instanceof Uint16Array) return new Uint16Array(data) as any;
-        if (data instanceof Int16Array) return new Int16Array(data) as any;
-        if (data instanceof Uint32Array) return new Uint32Array(data) as any;
-        if (data instanceof Int32Array) return new Int32Array(data) as any;
-        if (data instanceof Float64Array) return new Float64Array(data) as any;
-
-        if (Array.isArray(data)) return data.map(item => this.cloneFromWasm(item)) as any;
-
-        const copy: any = {};
-        for (const key in data) {
-            copy[key] = this.cloneFromWasm((data as any)[key]);
-        }
-        return copy;
-    }
-
     protected ensureInitialized(): void {
         if (!this.instance) throw new Error('GaussForge not initialized. Call init() first.');
     }
@@ -98,14 +71,19 @@ export abstract class GaussForgeBase {
         const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
         const result = this.instance!.read(input, format, options.strict || false);
         if (result.error) throw new Error(result.error);
-        return this.cloneFromWasm(result) as ReadResult;
+        return {
+            data: result.data,
+            ...(result.warning && { warning: result.warning })
+        } as ReadResult;
     }
 
     async write(ir: GaussianCloudIR, format: string, options: WriteOptions = {}): Promise<WriteResult> {
         this.ensureInitialized();
         const result = this.instance!.write(ir, format, options.strict || false);
         if (result.error) throw new Error(result.error);
-        return this.cloneFromWasm(result) as WriteResult;
+        return {
+            data: result.data
+        } as WriteResult;
     }
 
     async convert(data: ArrayBuffer | Uint8Array, inFmt: string, outFmt: string, options: ConvertOptions = {}): Promise<ConvertResult> {
@@ -113,7 +91,9 @@ export abstract class GaussForgeBase {
         const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
         const result = this.instance!.convert(input, inFmt, outFmt, options.strict || false);
         if (result.error) throw new Error(result.error);
-        return this.cloneFromWasm(result) as ConvertResult;
+        return {
+            data: result.data
+        } as ConvertResult;
     }
 
     getSupportedFormats(): SupportedFormat[] {
