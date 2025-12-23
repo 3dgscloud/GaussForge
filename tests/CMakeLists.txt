@@ -31,4 +31,12 @@ if(NOT EMSCRIPTEN)
     # PLY Compressed Writer Benchmark
     add_executable(ply_compressed_writer_benchmark ply_compressed_writer_benchmark.cpp)
     target_link_libraries(ply_compressed_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+
+    # Splat Reader Benchmark
+    add_executable(splat_reader_benchmark splat_reader_benchmark.cpp)
+    target_link_libraries(splat_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+
+    # Splat Writer Benchmark
+    add_executable(splat_writer_benchmark splat_writer_benchmark.cpp)
+    target_link_libraries(splat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
 endif()
