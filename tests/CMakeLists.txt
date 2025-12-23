@@ -47,4 +47,12 @@ if(NOT EMSCRIPTEN)
     # Ksplat Writer Benchmark
     add_executable(ksplat_writer_benchmark ksplat_writer_benchmark.cpp)
     target_link_libraries(ksplat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+
+    # Spz Reader Benchmark
+    add_executable(spz_reader_benchmark spz_reader_benchmark.cpp)
+    target_link_libraries(spz_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+
+    # Spz Writer Benchmark
+    add_executable(spz_writer_benchmark spz_writer_benchmark.cpp)
+    target_link_libraries(spz_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
 endif()
