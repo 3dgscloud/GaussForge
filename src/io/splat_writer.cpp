@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
+#include <memory>
 #include <vector>
 
 namespace gf {

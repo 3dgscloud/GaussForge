@@ -1,6 +1,6 @@
 FetchContent_Declare(
   spz
-  GIT_REPOSITORY git@github.com:nianticlabs/spz.git
+  GIT_REPOSITORY https://github.com/nianticlabs/spz.git
   GIT_TAG main
   GIT_SHALLOW TRUE
 )

@@ -55,4 +55,12 @@ if(NOT EMSCRIPTEN)
     # Spz Writer Benchmark
     add_executable(spz_writer_benchmark spz_writer_benchmark.cpp)
     target_link_libraries(spz_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
-endif()
+
+    # SOG Reader Benchmark
+    add_executable(sog_reader_benchmark sog_reader_benchmark.cpp)
+    target_link_libraries(sog_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
+
+    # SOG Writer Benchmark  
+    add_executable(sog_writer_benchmark sog_writer_benchmark.cpp)
+    target_link_libraries(sog_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
+  endif()

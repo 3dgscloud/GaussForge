@@ -4,7 +4,14 @@
 #include <string>
 #include <utility>
 
+#ifdef _MSC_VER
+#ifndef __restrict__
+#define __restrict__ __restrict
+#endif
+#endif
+
 namespace gf {
+
 
 struct Error {
   std::string message;

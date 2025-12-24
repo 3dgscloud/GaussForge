@@ -36,7 +36,8 @@ export interface ConvertResult {
     error?: string;
 }
 
-export type SupportedFormat = 'ply' | 'compressed.ply' | 'splat' | 'ksplat' | 'spz';
+export type SupportedFormat = 'ply' | 'compressed.ply' | 'splat' | 'ksplat' | 'spz' | 'sog';
+
 
 export interface ReadOptions {
     strict?: boolean;
