@@ -18,41 +18,41 @@ if(NOT EMSCRIPTEN)
     
     # PLY Reader Benchmark
     add_executable(ply_reader_benchmark ply_reader_benchmark.cpp)
-    target_link_libraries(ply_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
-    
+    target_link_libraries(ply_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
+
     # PLY Writer Benchmark
     add_executable(ply_writer_benchmark ply_writer_benchmark.cpp)
-    target_link_libraries(ply_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(ply_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # PLY Compressed Reader Benchmark
     add_executable(ply_compressed_reader_benchmark ply_compressed_reader_benchmark.cpp)
-    target_link_libraries(ply_compressed_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(ply_compressed_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # PLY Compressed Writer Benchmark
     add_executable(ply_compressed_writer_benchmark ply_compressed_writer_benchmark.cpp)
-    target_link_libraries(ply_compressed_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(ply_compressed_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Splat Reader Benchmark
     add_executable(splat_reader_benchmark splat_reader_benchmark.cpp)
-    target_link_libraries(splat_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(splat_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Splat Writer Benchmark
     add_executable(splat_writer_benchmark splat_writer_benchmark.cpp)
-    target_link_libraries(splat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(splat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Ksplat Reader Benchmark
     add_executable(ksplat_reader_benchmark ksplat_reader_benchmark.cpp)
-    target_link_libraries(ksplat_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(ksplat_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Ksplat Writer Benchmark
     add_executable(ksplat_writer_benchmark ksplat_writer_benchmark.cpp)
-    target_link_libraries(ksplat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(ksplat_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Spz Reader Benchmark
     add_executable(spz_reader_benchmark spz_reader_benchmark.cpp)
-    target_link_libraries(spz_reader_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(spz_reader_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 
     # Spz Writer Benchmark
     add_executable(spz_writer_benchmark spz_writer_benchmark.cpp)
-    target_link_libraries(spz_writer_benchmark PRIVATE gauss_forge benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(spz_writer_benchmark PRIVATE gauss_forge benchmark::benchmark_main)
 endif()
