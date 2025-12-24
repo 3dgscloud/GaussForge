@@ -238,12 +238,26 @@ public:
           HARMONICS_COMPONENT_COUNT[maxHarmonicsDegree];
       const int shCoeffsPerPoint = ShCoeffsPerPoint(maxHarmonicsDegree);
 
-      ir.positions.reserve(numSplats * 3);
-      ir.scales.reserve(numSplats * 3);
-      ir.rotations.reserve(numSplats * 4);
-      ir.alphas.reserve(numSplats);
-      ir.colors.reserve(numSplats * 3);
-      ir.sh.reserve(numSplats * shCoeffsPerPoint);
+      // Pre-allocate all vectors to avoid reallocation overhead
+      // This helps compiler optimize memory access patterns
+      ir.positions.resize(numSplats * 3);
+      ir.scales.resize(numSplats * 3);
+      ir.rotations.resize(numSplats * 4);
+      ir.alphas.resize(numSplats);
+      ir.colors.resize(numSplats * 3);
+      ir.sh.resize(numSplats * shCoeffsPerPoint);
+
+      // Use pointers for direct writes to enable better compiler optimization
+      // __restrict__ hints compiler that pointers don't alias
+      float *__restrict__ posPtr = ir.positions.data();
+      float *__restrict__ scalePtr = ir.scales.data();
+      float *__restrict__ rotPtr = ir.rotations.data();
+      float *__restrict__ alphaPtr = ir.alphas.data();
+      float *__restrict__ colorPtr = ir.colors.data();
+      float *__restrict__ shPtr = ir.sh.data();
+
+      // Initialize all SH coefficients to 0 in one bulk operation
+      std::fill(shPtr, shPtr + numSplats * shCoeffsPerPoint, 0.0f);
 
       size_t currentSectionDataOffset =
           MAIN_HEADER_SIZE + maxSections * SECTION_HEADER_SIZE;
@@ -443,46 +457,48 @@ public:
           const uint8_t opacity =
               splatData[splatByteOffset + config.colorStartByte + 3];
 
-          // Store position
-          ir.positions.push_back(x);
-          ir.positions.push_back(y);
-          ir.positions.push_back(z);
+          // Store position (3 floats) - contiguous writes enable SIMD
+          posPtr[0] = x;
+          posPtr[1] = y;
+          posPtr[2] = z;
+          posPtr += 3;
 
-          // Store scale (convert from linear to log scale)
-          ir.scales.push_back(scaleX > 0.0f ? std::log(scaleX) : -10.0f);
-          ir.scales.push_back(scaleY > 0.0f ? std::log(scaleY) : -10.0f);
-          ir.scales.push_back(scaleZ > 0.0f ? std::log(scaleZ) : -10.0f);
+          // Store scale (convert from linear to log scale, 3 floats)
+          scalePtr[0] = scaleX > 0.0f ? std::log(scaleX) : -10.0f;
+          scalePtr[1] = scaleY > 0.0f ? std::log(scaleY) : -10.0f;
+          scalePtr[2] = scaleZ > 0.0f ? std::log(scaleZ) : -10.0f;
+          scalePtr += 3;
 
-          // Store color (convert from uint8 back to spherical harmonics)
-          ir.colors.push_back((red / 255.0f - 0.5f) / SH_C0);
-          ir.colors.push_back((green / 255.0f - 0.5f) / SH_C0);
-          ir.colors.push_back((blue / 255.0f - 0.5f) / SH_C0);
+          // Store color (convert from uint8 back to spherical harmonics, 3
+          // floats)
+          colorPtr[0] = (red / 255.0f - 0.5f) / SH_C0;
+          colorPtr[1] = (green / 255.0f - 0.5f) / SH_C0;
+          colorPtr[2] = (blue / 255.0f - 0.5f) / SH_C0;
+          colorPtr += 3;
 
           // Store opacity (convert from uint8 to float and apply inverse
           // sigmoid)
           const float epsilon = 1e-6f;
           const float normalizedOpacity =
               std::max(epsilon, std::min(1.0f - epsilon, opacity / 255.0f));
-          ir.alphas.push_back(
-              std::log(normalizedOpacity / (1.0f - normalizedOpacity)));
+          *alphaPtr++ =
+              std::log(normalizedOpacity / (1.0f - normalizedOpacity));
 
-          // Store quaternion (IR format stores as [w, x, y, z])
-          ir.rotations.push_back(rot0); // w
-          ir.rotations.push_back(rot1); // x
-          ir.rotations.push_back(rot2); // y
-          ir.rotations.push_back(rot3); // z
+          // Store quaternion (IR format stores as [w, x, y, z], 4 floats)
+          rotPtr[0] = rot0; // w
+          rotPtr[1] = rot1; // x
+          rotPtr[2] = rot2; // y
+          rotPtr[3] = rot3; // z
+          rotPtr += 4;
 
           // Decode and store spherical harmonics
-          // Initialize all harmonics to 0 for this splat
-          for (int i = 0; i < shCoeffsPerPoint; i++) {
-            ir.sh.push_back(0.0f);
-          }
-
-          // Decode harmonics for this section's degree
           // ksplat format stores SH as: R_band0, G_band0, B_band0, R_band1,
           // G_band1, B_band1, ... IR format stores as: coeff1_R, coeff1_G,
           // coeff1_B, coeff2_R, coeff2_G, coeff2_B, ... where coefficients are
           // ordered by band: band1, band2, band3
+          // Optimized: direct pointer writes to pre-initialized zero array
+          const int coeffsPerChannel = harmonicsComponentCount / 3;
+
           for (int i = 0; i < harmonicsComponentCount; i++) {
             float harmonicsValue;
             if (compressionMode == 0) {
@@ -506,19 +522,19 @@ public:
             // ksplat format: Channel-First layout [R1...R15, G1...G15,
             // B1...B15] IR format: Coefficient-First layout [coeff1_RGB,
             // coeff2_RGB, ...]
-            const int coeffsPerChannel = harmonicsComponentCount / 3;
             const int channel = i / coeffsPerChannel; // R=0, G=1, B=2
             const int coeffInChannel =
                 i % coeffsPerChannel; // coefficient index within channel
 
             // IR format: coeff_R, coeff_G, coeff_B for each coefficient
             // coeffInChannel directly maps to IR coefficient index (0-based)
-            const int shOffset =
-                splatIndex * shCoeffsPerPoint + coeffInChannel * 3 + channel;
-            if (shOffset < static_cast<int>(ir.sh.size())) {
-              ir.sh[shOffset] = harmonicsValue;
-            }
+            // Direct write using pointer arithmetic for better optimization
+            float *__restrict__ shTargetPtr =
+                shPtr + coeffInChannel * 3 + channel;
+            *shTargetPtr = harmonicsValue;
           }
+
+          shPtr += shCoeffsPerPoint;
 
           splatIndex++;
         }
