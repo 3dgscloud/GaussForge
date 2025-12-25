@@ -88,29 +88,33 @@ void BM_SogReader_Read(benchmark::State& state) {
   // Create test data
   auto ir = CreateRealisticSOGData(numPoints);
   
-  // Write to temporary SOG file
-  std::string tempFile = "benchmark_temp.sog";
+  // Write to memory
   auto writer = gf::MakeSogWriter();
-  if (!writer->Write(tempFile, ir)) {
-    state.SkipWithError("Failed to write test SOG file");
+  auto writeResult = writer->Write(ir, {});
+  if (!writeResult.ok()) {
+    state.SkipWithError("Failed to write test SOG data");
     return;
   }
+  const auto& data = writeResult.value();
 
   // Benchmark reading
   for (auto _ : state) {
     auto reader = gf::MakeSogReader();
-    auto readIr = reader->Read(tempFile);
+    auto readIrResult = reader->Read(data.data(), data.size(), {});
     
-    if (readIr.numPoints != numPoints) {
+    if (!readIrResult.ok()) {
+      state.SkipWithError("Read SOG data failed");
+      return;
+    }
+    
+    if (readIrResult.value().numPoints != numPoints) {
       state.SkipWithError("Read SOG data mismatch");
       return;
     }
   }
 
-  // Cleanup
-  std::remove(tempFile.c_str());
-  
   // Set performance metrics
+  state.SetBytesProcessed(static_cast<int64_t>(data.size()));
   state.SetItemsProcessed(static_cast<int64_t>(numPoints));
 }
 
