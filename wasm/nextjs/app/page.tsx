@@ -55,7 +55,7 @@ export default function Home() {
             detectedSupportedFormat = 'compressed.ply';
         } else {
             const ext = file.name.split('.').pop()?.toLowerCase();
-            const validFormats: SupportedFormat[] = ['ply', 'splat', 'ksplat', 'spz'];
+            const validFormats: SupportedFormat[] = ['ply', 'splat', 'ksplat', 'spz', 'sog'];
             if (ext && validFormats.includes(ext as SupportedFormat)) {
                 detectedFormat = ext;
                 detectedSupportedFormat = ext as SupportedFormat;
@@ -163,7 +163,7 @@ export default function Home() {
                     <input
                         id="file-input"
                         type="file"
-                        accept=".ply,.compressed.ply,.splat,.ksplat,.spz"
+                        accept=".ply,.compressed.ply,.splat,.ksplat,.spz,.sog"
                         onChange={handleFileSelect}
                     />
                 </div>
