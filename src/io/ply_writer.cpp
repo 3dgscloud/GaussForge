@@ -2,8 +2,13 @@
 
 #include "gf/io/writer.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>

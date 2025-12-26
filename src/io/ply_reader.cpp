@@ -1,9 +1,14 @@
 #include "gf/io/ply.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>

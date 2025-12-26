@@ -27,12 +27,13 @@ function findEmscripten() {
         // Try to find Emscripten in project directory
         const possiblePaths = [
             path.join(PROJECT_ROOT, '.emsdk'),
+            path.join(PROJECT_ROOT, '../emsdk'),
             path.join(process.env.HOME || '', 'emsdk'),
         ];
 
         for (const emsdkPath of possiblePaths) {
             const emccPath = path.join(emsdkPath, 'upstream/emscripten/emcc');
-            if (fs.existsSync(emccPath)) {
+            if (fs.existsSync(emccPath) || fs.existsSync(emccPath + '.bat')) {
                 console.log(`Found Emscripten: ${emsdkPath}`);
                 // Set environment variables
                 const emscriptenDir = path.join(emsdkPath, 'upstream/emscripten');
@@ -77,7 +78,7 @@ function configureCMake(environment) {
 
     if (emsdkPath) {
         const emcmakePath = path.join(emsdkPath, 'upstream/emscripten/emcmake');
-        if (fs.existsSync(emcmakePath)) {
+        if (fs.existsSync(emcmakePath) || fs.existsSync(emcmakePath + '.bat')) {
             emcmake = emcmakePath;
         }
     }

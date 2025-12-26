@@ -6,8 +6,10 @@
 #include "gf/io/ply_compressed.h"
 #include "gf/io/splat.h"
 #include "gf/io/spz.h"
+#include "gf/io/sog.h"
 
 namespace gf {
+
 
 namespace {
 std::string NormalizeExt(const std::string &ext) {
@@ -29,7 +31,10 @@ IORegistry::IORegistry() {
   RegisterWriter({"splat"}, gf::MakeSplatWriter());
   RegisterReader({"ksplat"}, gf::MakeKsplatReader());
   RegisterWriter({"ksplat"}, gf::MakeKsplatWriter());
+  RegisterReader({"sog"}, gf::MakeSogReader());
+  RegisterWriter({"sog"}, gf::MakeSogWriter());
 }
+
 
 void IORegistry::RegisterReader(const std::vector<std::string> &exts,
                                 std::unique_ptr<IGaussReader> reader) {

@@ -136,6 +136,7 @@ Returns: `boolean`
 - `splat` - Splat format
 - `ksplat` - KSplat format
 - `spz` - SPZ format
+- `sog` - SOG format
 
 ## Development
 

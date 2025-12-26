@@ -58,7 +58,7 @@ async function test() {
 
         // 5. Test format conversion
         console.log('4️⃣  Testing format conversion...');
-        const outputFormats = ['splat', 'ksplat', 'spz', 'ply', 'compressed.ply'];
+        const outputFormats = ['splat', 'ksplat', 'spz', 'ply', 'compressed.ply', 'sog'];
 
         for (const outFormat of outputFormats) {
             if (!formats.includes(outFormat)) {

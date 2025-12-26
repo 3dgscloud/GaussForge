@@ -41,10 +41,24 @@ Try GaussForge in your browser! Visit **[3DGS Viewer](https://www.3dgsviewers.co
 | Compressed PLY | `.compressed.ply` | ✅ | ✅ | Compressed PLY format |
 | SPLAT | `.splat` | ✅ | ✅ | Splat format |
 | KSPLAT | `.ksplat` | ✅ | ✅ | K-Splat format |
-| SOG | `.sog` | ⏳ | ⏳ | SOG format (not yet implemented) |
+| SOG | `.sog` | ✅ | ✅ | SOG format |
 | LCC | `.lcc` | ⏳ | ⏳ | LCC format (not yet implemented) |
 
+## Dependencies & Credits
+
+GaussForge is built on top of several excellent open-source libraries:
+
+- **[spz](https://github.com/nianticlabs/spz)**: Gaussian splat compression library (Apache-2.0)
+- **[libwebp](https://github.com/webmproject/libwebp)**: WebP image encoding/decoding (BSD-3-Clause)
+- **[nlohmann_json](https://github.com/nlohmann/json)**: JSON for Modern C++ (MIT)
+- **[zlib](https://github.com/madler/zlib)**: Compression library (zlib License)
+
+### Format Credits
+- **SPZ Format**: Developed by **[Niantic](https://github.com/nianticlabs/spz)**.
+- **KSPLAT Format**: Developed by **[mkkellogg](https://github.com/mkkellogg/GaussianSplats3D)**.
+
 ## Quick Start
+
 
 ### System Requirements
 
@@ -203,7 +217,9 @@ Contributions via Issues and Pull Requests are welcome!
 ## Related Resources
 
 - [3D Gaussian Splatting Paper](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
+- [SOG Format Specification](https://developer.playcanvas.com/user-manual/gaussian-splatting/formats/sog/)
 - [SPZ Format Documentation](https://github.com/nianticlabs/spz)
+
 
 ## Acknowledgments
 

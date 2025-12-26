@@ -184,7 +184,7 @@ public:
 
   val getSupportedFormats() {
     val f = val::array();
-    for (auto &s : {"ply", "compressed.ply", "splat", "ksplat", "spz"})
+    for (auto &s : {"ply", "compressed.ply", "splat", "ksplat", "spz", "sog"})
       f.call<void>("push", val(s));
     return f;
   }
