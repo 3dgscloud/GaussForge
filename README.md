@@ -42,7 +42,6 @@ Try GaussForge in your browser! Visit **[3DGS Viewer](https://www.3dgsviewers.co
 | SPLAT | `.splat` | ✅ | ✅ | Splat format |
 | KSPLAT | `.ksplat` | ✅ | ✅ | K-Splat format |
 | SOG | `.sog` | ✅ | ✅ | SOG format |
-| LCC | `.lcc` | ⏳ | ⏳ | LCC format (not yet implemented) |
 
 ## Dependencies & Credits
 
