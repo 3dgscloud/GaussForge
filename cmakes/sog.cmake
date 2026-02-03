@@ -1,47 +1,5 @@
-# SOG format dependencies: libwebp, nlohmann_json, and zlib
-
-# ZLIB for ZIP creation and SPZ
-FetchContent_Declare(
-  zlib
-  GIT_REPOSITORY https://github.com/madler/zlib.git
-  GIT_TAG v1.3.1
-  GIT_SHALLOW TRUE
-)
-# ZLIB build options
-set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-
-# Patch zlib to not create shared library target in WASM
-if(EMSCRIPTEN)
-  # Override the shared library target name to avoid conflict
-  set(CMAKE_SHARED_LIBRARY_PREFIX "_")
-  set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
-endif()
-
-FetchContent_MakeAvailable(zlib)
-
-if(EMSCRIPTEN)
-  # When BUILD_SHARED_LIBS is OFF (set in wasm.cmake), zlib's CMakeLists.txt
-  # creates two static libraries: 'zlib' and 'zlibstatic'.
-  # Both try to output 'libz.a'. Ninja detects this as a conflict even if
-  # one target is EXCLUDE_FROM_ALL.
-  # We resolve this by renaming zlibstatic's output name.
-  if(TARGET zlibstatic)
-    set_target_properties(zlibstatic PROPERTIES OUTPUT_NAME z_static)
-  endif()
-endif()
-
-# Set variables for other packages that use find_package(ZLIB)
-set(ZLIB_FOUND TRUE CACHE BOOL "" FORCE)
-set(ZLIB_INCLUDE_DIR "${zlib_SOURCE_DIR};${zlib_BINARY_DIR}" CACHE PATH "" FORCE)
-# Point to the main 'zlib' target (which is static in WASM build) to align with dependencies
-set(ZLIB_LIBRARY zlib CACHE FILEPATH "" FORCE)
-set(ZLIB_LIBRARIES zlib CACHE FILEPATH "" FORCE)
-
-if(NOT TARGET ZLIB::ZLIB)
-  add_library(ZLIB::ZLIB INTERFACE IMPORTED)
-  target_link_libraries(ZLIB::ZLIB INTERFACE zlib)
-  target_include_directories(ZLIB::ZLIB INTERFACE "${zlib_SOURCE_DIR}" "${zlib_BINARY_DIR}")
-endif()
+# SOG format dependencies: libwebp and nlohmann_json
+# (zlib is in cmakes/zlib.cmake, included before this file)
 
 # libwebp for WebP image decoding
 FetchContent_Declare(

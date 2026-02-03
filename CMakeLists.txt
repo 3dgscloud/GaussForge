@@ -18,19 +18,19 @@ configure_file(
 include(FetchContent)
 
 # --------------------------------------------------------
-# 1. Include WASM configuration (must be before dependencies to manage ZLIB)
+# 1. Include WASM configuration (must be before dependencies)
 # --------------------------------------------------------
 if(EMSCRIPTEN)
     include(cmakes/wasm.cmake)
-    # Prevent zlib from building shared library which conflicts with static one in WASM
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
 
 # --------------------------------------------------------
-# 2. Include third-party dependencies (SPZ, etc.)
+# 2. Include third-party dependencies
 # --------------------------------------------------------
-include(cmakes/sog.cmake)
-include(cmakes/spz.cmake)
+include(cmakes/zlib.cmake)   # ZLIB for SOG, SPZ, etc. (must be before sog and spz)
+include(cmakes/sog.cmake)    # libwebp, nlohmann_json for SOG format
+include(cmakes/spz.cmake)    # SPZ format (depends on ZLIB)
 
 # --------------------------------------------------------
 # 3. Compilation options optimization (common and Release)
