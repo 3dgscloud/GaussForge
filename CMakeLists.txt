@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 project(gauss_forge
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "A high-performance Gaussian Splatting format conversion library"
     LANGUAGES CXX C
 )
