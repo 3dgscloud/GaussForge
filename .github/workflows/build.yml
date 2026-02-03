@@ -48,7 +48,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           ./build/gfconvert --version
-          ./build/gfconvert examples/web/tiny_gauss.ply /tmp/test.spz
+          ./build/gfconvert tiny_gauss.ply /tmp/test.spz
           if [ ! -s /tmp/test.spz ]; then echo "Conversion failed"; exit 1; fi
 
       - name: Test (Windows)
@@ -56,7 +56,7 @@ jobs:
         shell: cmd
         run: |
           build\Release\gfconvert.exe --version
-          build\Release\gfconvert.exe examples\web\tiny_gauss.ply %TEMP%\test.spz
+          build\Release\gfconvert.exe tiny_gauss.ply %TEMP%\test.spz
           if not exist %TEMP%\test.spz exit /b 1
 
 
@@ -65,7 +65,7 @@ jobs:
         run: |
           mkdir -p release_dir
           cp build/gfconvert release_dir/
-          cp examples/web/tiny_gauss.ply release_dir/
+          cp tiny_gauss.ply release_dir/
           echo "Quick Start: ./gfconvert tiny_gauss.ply output.spz" > release_dir/README.txt
           tar -czf ${{ matrix.artifact_name }}${{ matrix.asset_extension }} -C release_dir .
 
@@ -75,7 +75,7 @@ jobs:
         run: |
           mkdir release_dir
           copy build\Release\gfconvert.exe release_dir\
-          copy examples\web\tiny_gauss.ply release_dir\
+          copy tiny_gauss.ply release_dir\
           echo Quick Start: gfconvert.exe tiny_gauss.ply output.spz > release_dir\README.txt
           7z a ${{ matrix.artifact_name }}${{ matrix.asset_extension }} .\release_dir\*
 
