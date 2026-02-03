@@ -38,7 +38,16 @@ jobs:
         with:
           cmake-version: '3.26.x'
 
-      - name: Configure CMake
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc"
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="/MT" -DCMAKE_C_FLAGS_RELEASE="/MT"
+
+      - name: Configure CMake (macOS)
+        if: runner.os == 'macOS'
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
