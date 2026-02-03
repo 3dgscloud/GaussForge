@@ -20,10 +20,6 @@ jobs:
             arch: x86_64
             artifact_name: gfconvert-linux-x86_64
             asset_extension: .tar.gz
-          - os: macos-13
-            arch: x86_64
-            artifact_name: gfconvert-macos-x86_64
-            asset_extension: .tar.gz
           - os: macos-14
             arch: arm64
             artifact_name: gfconvert-macos-arm64
