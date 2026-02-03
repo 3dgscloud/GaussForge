@@ -1,0 +1,93 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x86_64
+            artifact_name: gfconvert-linux-x86_64
+            asset_extension: .tar.gz
+          - os: macos-13
+            arch: x86_64
+            artifact_name: gfconvert-macos-x86_64
+            asset_extension: .tar.gz
+          - os: macos-14
+            arch: arm64
+            artifact_name: gfconvert-macos-arm64
+            asset_extension: .tar.gz
+          - os: windows-latest
+            arch: x86_64
+            artifact_name: gfconvert-windows-x86_64
+            asset_extension: .zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.26.x'
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release -j
+      
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ./build/gfconvert --version
+          ./build/gfconvert examples/web/tiny_gauss.ply /tmp/test.spz
+          if [ ! -s /tmp/test.spz ]; then echo "Conversion failed"; exit 1; fi
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          build\Release\gfconvert.exe --version
+          build\Release\gfconvert.exe examples\web\tiny_gauss.ply %TEMP%\test.spz
+          if not exist %TEMP%\test.spz exit /b 1
+
+
+      - name: Prepare Assets (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p release_dir
+          cp build/gfconvert release_dir/
+          cp examples/web/tiny_gauss.ply release_dir/
+          echo "Quick Start: ./gfconvert tiny_gauss.ply output.spz" > release_dir/README.txt
+          tar -czf ${{ matrix.artifact_name }}${{ matrix.asset_extension }} -C release_dir .
+
+      - name: Prepare Assets (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          mkdir release_dir
+          copy build\Release\gfconvert.exe release_dir\
+          copy examples\web\tiny_gauss.ply release_dir\
+          echo Quick Start: gfconvert.exe tiny_gauss.ply output.spz > release_dir\README.txt
+          7z a ${{ matrix.artifact_name }}${{ matrix.asset_extension }} .\release_dir\*
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_name }}${{ matrix.asset_extension }}
+          tag_name: ${{ github.ref_name }}
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
