@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "gf/core/gauss_ir.h"
+#include "gf/core/model_info.h"
 #include "gf/core/validate.h"
 #include "gf/core/version.h"
 #include "gf/io/registry.h"
@@ -105,6 +106,96 @@ gf::GaussianCloudIR jsToGaussIR(val jsIR) {
   return ir;
 }
 
+/**
+ * Convert ModelInfo to JS object
+ */
+val modelInfoToJS(const gf::ModelInfo &info) {
+  val result = val::object();
+
+  // Basic info
+  val basic = val::object();
+  basic.set("numPoints", info.numPoints);
+  if (info.fileSize > 0)
+    basic.set("fileSize", static_cast<double>(info.fileSize));
+  if (!info.sourceFormat.empty())
+    basic.set("sourceFormat", info.sourceFormat);
+  result.set("basic", basic);
+
+  // Rendering properties
+  val rendering = val::object();
+  rendering.set("shDegree", info.shDegree);
+  rendering.set("antialiased", info.antialiased);
+  result.set("rendering", rendering);
+
+  // Metadata
+  val meta = val::object();
+  meta.set("handedness", gf::HandednessToString(info.handedness));
+  meta.set("upAxis", gf::UpAxisToString(info.upAxis));
+  meta.set("unit", gf::LengthUnitToString(info.unit));
+  meta.set("colorSpace", gf::ColorSpaceToString(info.colorSpace));
+  result.set("meta", meta);
+
+  // Geometry statistics
+  if (info.numPoints > 0) {
+    val bounds = val::object();
+    val x = val::array();
+    x.call<void>("push", info.bounds.minX);
+    x.call<void>("push", info.bounds.maxX);
+    bounds.set("x", x);
+
+    val y = val::array();
+    y.call<void>("push", info.bounds.minY);
+    y.call<void>("push", info.bounds.maxY);
+    bounds.set("y", y);
+
+    val z = val::array();
+    z.call<void>("push", info.bounds.minZ);
+    z.call<void>("push", info.bounds.maxZ);
+    bounds.set("z", z);
+    result.set("bounds", bounds);
+  }
+
+  // Scale statistics
+  if (info.scaleStats.count > 0) {
+    val scaleStats = val::object();
+    scaleStats.set("min", info.scaleStats.min);
+    scaleStats.set("max", info.scaleStats.max);
+    scaleStats.set("avg", info.scaleStats.avg);
+    result.set("scaleStats", scaleStats);
+  }
+
+  // Alpha statistics
+  if (info.alphaStats.count > 0) {
+    val alphaStats = val::object();
+    alphaStats.set("min", info.alphaStats.min);
+    alphaStats.set("max", info.alphaStats.max);
+    alphaStats.set("avg", info.alphaStats.avg);
+    result.set("alphaStats", alphaStats);
+  }
+
+  // Data size breakdown
+  val sizes = val::object();
+  sizes.set("positions", gf::FormatBytes(info.positionsSize));
+  sizes.set("scales", gf::FormatBytes(info.scalesSize));
+  sizes.set("rotations", gf::FormatBytes(info.rotationsSize));
+  sizes.set("alphas", gf::FormatBytes(info.alphasSize));
+  sizes.set("colors", gf::FormatBytes(info.colorsSize));
+  sizes.set("sh", gf::FormatBytes(info.shSize));
+  sizes.set("total", gf::FormatBytes(info.totalSize));
+  result.set("sizes", sizes);
+
+  // Extra attributes
+  if (!info.extraAttrs.empty()) {
+    val extras = val::object();
+    for (const auto &[name, size] : info.extraAttrs) {
+      extras.set(name, gf::FormatBytes(size));
+    }
+    result.set("extraAttrs", extras);
+  }
+
+  return result;
+}
+
 } // namespace
 
 /**
@@ -189,6 +280,27 @@ public:
     return f;
   }
 
+  val getModelInfo(val jsData, const std::string &format, size_t fileSize = 0) {
+    try {
+      std::vector<uint8_t> data = vecFromJSArray<uint8_t>(jsData);
+      auto *reader = registry_->ReaderForExt(format);
+      if (!reader)
+        return err("No reader for " + format);
+
+      auto ir_or = reader->Read(data.data(), data.size(), {/*strict=*/false});
+      if (!ir_or)
+        return err(ir_or.error().message);
+
+      gf::ModelInfo info = gf::GetModelInfo(ir_or.value(), fileSize);
+
+      val res = val::object();
+      res.set("data", modelInfoToJS(info));
+      return res;
+    } catch (const std::exception &e) {
+      return err(e.what());
+    }
+  }
+
   std::string getVersion() { return GAUSS_FORGE_VERSION_STRING; }
 
 private:
@@ -206,6 +318,7 @@ EMSCRIPTEN_BINDINGS(gauss_forge) {
       .function("read", &GaussForgeWASM::read)
       .function("write", &GaussForgeWASM::write)
       .function("convert", &GaussForgeWASM::convert)
+      .function("getModelInfo", &GaussForgeWASM::getModelInfo)
       .function("getSupportedFormats", &GaussForgeWASM::getSupportedFormats)
       .function("getVersion", &GaussForgeWASM::getVersion);
 }
