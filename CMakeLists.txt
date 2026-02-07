@@ -71,6 +71,7 @@ endif()
 # 4. Define library source files
 # --------------------------------------------------------
 set(GAUSS_FORGE_SOURCES
+    src/core/model_info.cpp
     src/core/validate.cpp
     src/io/registry.cpp
     src/io/ply_auto.cpp
