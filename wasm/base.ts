@@ -10,6 +10,8 @@ import type {
     ReadOptions,
     WriteOptions,
     ConvertOptions,
+    ModelInfoResult,
+    ModelInfoOptions,
 } from './types';
 
 export interface EmscriptenModule {
@@ -21,6 +23,7 @@ export interface GaussForgeWASMInstance {
     read(data: Uint8Array, format: string, strict: boolean): any;
     write(ir: any, format: string, strict: boolean): any;
     convert(data: Uint8Array, inFmt: string, outFmt: string, strict: boolean): any;
+    getModelInfo(data: Uint8Array, format: string, fileSize: number): any;
     getSupportedFormats(): string[];
     getVersion(): string;
     delete(): void;
@@ -104,6 +107,16 @@ export abstract class GaussForgeBase {
     getVersion(): string {
         this.ensureInitialized();
         return this.instance!.getVersion();
+    }
+
+    async getModelInfo(data: ArrayBuffer | Uint8Array, format: string, options: ModelInfoOptions = {}): Promise<ModelInfoResult> {
+        this.ensureInitialized();
+        const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+        const result = this.instance!.getModelInfo(input, format, options.fileSize || 0);
+        if (result.error) return { error: result.error } as ModelInfoResult;
+        return {
+            data: result.data
+        } as ModelInfoResult;
     }
 
     /**

@@ -56,6 +56,63 @@ async function test() {
         console.log(`   📊 SH degree: ${readResult.data.meta.shDegree}`);
         console.log(`   📊 Source format: ${readResult.data.meta.sourceFormat || 'Unknown'}\n`);
 
+        // 4.5. Test model info
+        console.log('4️⃣  Testing model info...');
+        const infoResult = await gaussForge.getModelInfo(inputData, 'ply', inputData.length);
+        if (infoResult.error) {
+            console.log(`   ❌ Model info failed: ${infoResult.error}\n`);
+        } else {
+            const info = infoResult.data;
+            console.log('   ✅ Model info retrieved');
+            console.log(`   📊 Basic info:`);
+            console.log(`      - Points: ${info.basic.numPoints}`);
+            if (info.basic.fileSize) console.log(`      - File size: ${info.basic.fileSize} bytes`);
+            if (info.basic.sourceFormat) console.log(`      - Source format: ${info.basic.sourceFormat}`);
+            console.log(`   🎨 Rendering:`);
+            console.log(`      - SH degree: ${info.rendering.shDegree}`);
+            console.log(`      - Antialiased: ${info.rendering.antialiased ? 'Yes' : 'No'}`);
+            if (info.meta.handedness !== 'Unknown') {
+                console.log(`   📐 Metadata:`);
+                console.log(`      - Handedness: ${info.meta.handedness}`);
+                console.log(`      - Up axis: ${info.meta.upAxis}`);
+                console.log(`      - Unit: ${info.meta.unit}`);
+                console.log(`      - Color space: ${info.meta.colorSpace}`);
+            }
+            if (info.bounds) {
+                console.log(`   📦 Bounds:`);
+                console.log(`      - X: [${info.bounds.x[0]}, ${info.bounds.x[1]}]`);
+                console.log(`      - Y: [${info.bounds.y[0]}, ${info.bounds.y[1]}]`);
+                console.log(`      - Z: [${info.bounds.z[0]}, ${info.bounds.z[1]}]`);
+            }
+            if (info.scaleStats) {
+                console.log(`   📏 Scale stats:`);
+                console.log(`      - Min: ${info.scaleStats.min}`);
+                console.log(`      - Max: ${info.scaleStats.max}`);
+                console.log(`      - Avg: ${info.scaleStats.avg}`);
+            }
+            if (info.alphaStats) {
+                console.log(`   🔍 Alpha stats:`);
+                console.log(`      - Min: ${info.alphaStats.min}`);
+                console.log(`      - Max: ${info.alphaStats.max}`);
+                console.log(`      - Avg: ${info.alphaStats.avg}`);
+            }
+            console.log(`   💾 Data sizes:`);
+            console.log(`      - Positions: ${info.sizes.positions}`);
+            console.log(`      - Scales: ${info.sizes.scales}`);
+            console.log(`      - Rotations: ${info.sizes.rotations}`);
+            console.log(`      - Alphas: ${info.sizes.alphas}`);
+            console.log(`      - Colors: ${info.sizes.colors}`);
+            console.log(`      - SH: ${info.sizes.sh}`);
+            console.log(`      - Total: ${info.sizes.total}`);
+            if (info.extraAttrs) {
+                console.log(`   ➕ Extra attributes:`);
+                for (const [name, size] of Object.entries(info.extraAttrs)) {
+                    console.log(`      - ${name}: ${size}`);
+                }
+            }
+            console.log('');
+        }
+
         // 5. Test format conversion
         console.log('4️⃣  Testing format conversion...');
         const outputFormats = ['splat', 'ksplat', 'spz', 'ply', 'compressed.ply', 'sog'];

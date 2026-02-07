@@ -51,3 +51,64 @@ export interface ConvertOptions {
     strict?: boolean;
 }
 
+// Model Info types
+export interface FloatStats {
+    min: number;
+    max: number;
+    avg: number;
+}
+
+export interface BoundingBox {
+    x: [number, number];
+    y: [number, number];
+    z: [number, number];
+}
+
+export interface ModelInfoBasic {
+    numPoints: number;
+    fileSize?: number;
+    sourceFormat?: string;
+}
+
+export interface ModelInfoRendering {
+    shDegree: number;
+    antialiased: boolean;
+}
+
+export interface ModelInfoMeta {
+    handedness: string;
+    upAxis: string;
+    unit: string;
+    colorSpace: string;
+}
+
+export interface ModelInfoSizes {
+    positions: string;
+    scales: string;
+    rotations: string;
+    alphas: string;
+    colors: string;
+    sh: string;
+    total: string;
+}
+
+export interface ModelInfo {
+    basic: ModelInfoBasic;
+    rendering: ModelInfoRendering;
+    meta: ModelInfoMeta;
+    bounds?: BoundingBox;
+    scaleStats?: FloatStats;
+    alphaStats?: FloatStats;
+    sizes: ModelInfoSizes;
+    extraAttrs?: Record<string, string>;
+}
+
+export interface ModelInfoResult {
+    data: ModelInfo;
+    error?: string;
+}
+
+export interface ModelInfoOptions {
+    fileSize?: number;
+}
+
