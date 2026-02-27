@@ -1,0 +1,47 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish @gaussforge/wasm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: "3.26.x"
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Install dependencies
+        working-directory: wasm
+        run: npm install
+
+      - name: Build WASM
+        working-directory: wasm
+        run: npm run build
+
+      - name: Publish to npm (OIDC)
+        working-directory: wasm
+        env:
+          NPM_CONFIG_PROVENANCE: true
+        run: npm publish --access public
