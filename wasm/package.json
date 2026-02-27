@@ -27,7 +27,8 @@
         "prepublishOnly": "npm run build"
     },
     "publishConfig": {
-        "access": "public"
+        "access": "public",
+        "provenance": true
     },
     "keywords": [
         "gaussian-splatting",
