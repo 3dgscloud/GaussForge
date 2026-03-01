@@ -1,0 +1,5 @@
+output.*
+__pycache__/
+*.pyc
+*.so
+*.cpython-*.so

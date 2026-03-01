@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.whl
+
+# Compiled extensions
+*.so
+*.cpython-*.so
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/

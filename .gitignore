@@ -5,3 +5,6 @@ transform/
 .emsdk
 build-wasm/
 .claude
+__pycache__/
+*.py[cod]
+*$py.class
