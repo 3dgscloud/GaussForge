@@ -67,7 +67,6 @@ jobs:
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
           CIBW_ARCHS_WINDOWS: AMD64
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_ENVIRONMENT: CMAKE_CXX_COMPILER_LAUNCHER=ccache
           CIBW_CONFIG_SETTINGS: "wheel.py-api=cp312"
         with:
           package-dir: python
