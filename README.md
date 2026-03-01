@@ -10,7 +10,7 @@
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)
-[![PyPI](https://img.shields.io/pypi/v/gaussforge?label=pypi)](https://pypi.org/project/gaussforge/)
+[![PyPI](https://img.shields.io/pypi/v/gaussforge)](https://pypi.org/project/gaussforge/)
 ![npm](https://img.shields.io/npm/v/@gaussforge/wasm?label=npm)
 [![GitHub Release](https://img.shields.io/github/v/release/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/releases)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/commits)
