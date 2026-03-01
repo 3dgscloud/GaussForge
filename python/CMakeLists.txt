@@ -78,7 +78,5 @@ target_include_directories(_core PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
-# Set output directory for the extension module
-set_target_properties(_core PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/gaussforge"
-)
+# Install the compiled extension module to the gaussforge package directory
+install(TARGETS _core DESTINATION gaussforge)
