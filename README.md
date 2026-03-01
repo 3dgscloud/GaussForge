@@ -10,6 +10,7 @@
 ![C++](https://img.shields.io/badge/C++-17-blue.svg)
 ![CMake](https://img.shields.io/badge/CMake-3.26+-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)
+[![PyPI](https://img.shields.io/pypi/v/gaussforge?label=pypi)](https://pypi.org/project/gaussforge/)
 ![npm](https://img.shields.io/npm/v/@gaussforge/wasm?label=npm)
 [![GitHub Release](https://img.shields.io/github/v/release/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/releases)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/3dgscloud/GaussForge)](https://github.com/3dgscloud/GaussForge/commits)
@@ -29,6 +30,7 @@ Try GaussForge in your browser! Visit **[3DGS Viewer](https://www.3dgsviewers.co
 - **Lossless Conversion**: Based on a unified intermediate representation (IR) to ensure data integrity
 - **Easy Integration**: Provides both static library and command-line tool
 - **WebAssembly Support**: WASM build available for browser and Node.js environments with TypeScript bindings
+- **Python Support**: Python package available via pip with pre-built wheels for major platforms
 - **Data Validation**: Built-in data validation mechanism to ensure conversion quality
 - **Zero Dependencies**: Only depends on necessary third-party libraries (managed via CMake FetchContent), apart from build tools
 
@@ -156,6 +158,52 @@ const converted = await gaussForge.convert(fileData, 'ply', 'spz');
 
 For detailed WASM usage and API documentation, see the [WASM README](wasm/README.md).
 
+### Python Package
+
+GaussForge provides a Python package with pre-built wheels for Linux, macOS (Apple Silicon), and Windows. No compilation required - just install and use.
+
+**Installation:**
+```bash
+pip install gaussforge
+```
+
+**Quick Example:**
+```python
+import gaussforge
+
+# Create instance
+gf = gaussforge.GaussForge()
+
+# Get version and supported formats
+print(f"Version: {gaussforge.__version__}")
+print(f"Formats: {gf.get_supported_formats()}")
+
+# Read a PLY file
+with open("model.ply", "rb") as f:
+    data = f.read()
+
+result = gf.read(data, "ply")
+if "error" not in result:
+    print(f"Loaded {result['data']['numPoints']} points")
+
+# Convert to another format
+converted = gf.convert(data, "ply", "splat")
+if "error" not in converted:
+    with open("output.splat", "wb") as f:
+        f.write(converted["data"])
+```
+
+**API Reference:**
+- `GaussForge()` - Create a new instance
+- `read(data: bytes, format: str)` - Read Gaussian data from bytes
+- `write(ir: dict, format: str)` - Write Gaussian IR to bytes
+- `convert(data: bytes, in_format: str, out_format: str)` - Convert between formats
+- `get_model_info(data: bytes, format: str)` - Get detailed model information
+- `get_supported_formats()` - Get list of supported format names
+- `get_version()` - Get library version string
+
+For more details, see the [Python README](python/README.md).
+
 ## Project Structure
 
 ```
@@ -167,7 +215,10 @@ GaussForge/
 ├── src/               # Source files
 │   ├── core/          # Core implementations
 │   ├── io/            # I/O implementations
-│   └── cli/           # Command-line tool
+│   ├── cli/           # Command-line tool
+│   └── wasm/          # WebAssembly bindings
+├── python/            # Python package (nanobind bindings)
+├── wasm/              # WASM package (npm)
 └── cmakes/            # CMake configuration files
 ```
 
