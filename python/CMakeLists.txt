@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.26)
 
 project(gaussforge_python
-    VERSION 0.5.0
+    VERSION 0.5.1
     LANGUAGES CXX C
 )
 
@@ -67,7 +67,7 @@ target_link_libraries(gauss_forge_py PUBLIC
 # Create Python extension module
 nanobind_add_module(
     _core
-    STABLE_ABI
+    # STABLE_ABI
     LTO
     NB_STATIC
     src/gaussforge/bindings.cpp
