@@ -50,6 +50,7 @@ export interface WriteOptions {
 
 export interface ConvertOptions {
     strict?: boolean;
+    includeInfo?: boolean;
 }
 
 // Model Info types

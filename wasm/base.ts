@@ -22,7 +22,7 @@ export interface EmscriptenModule {
 export interface GaussForgeWASMInstance {
     read(data: Uint8Array, format: string, strict: boolean): any;
     write(ir: any, format: string, strict: boolean): any;
-    convert(data: Uint8Array, inFmt: string, outFmt: string, strict: boolean): any;
+    convert(data: Uint8Array, inFmt: string, outFmt: string, strict: boolean, includeInfo: boolean): any;
     getModelInfo(data: Uint8Array, format: string, fileSize: number): any;
     getSupportedFormats(): string[];
     getVersion(): string;
@@ -92,7 +92,7 @@ export abstract class GaussForgeBase {
     async convert(data: ArrayBuffer | Uint8Array, inFmt: string, outFmt: string, options: ConvertOptions = {}): Promise<ConvertResult> {
         this.ensureInitialized();
         const input = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
-        const result = this.instance!.convert(input, inFmt, outFmt, options.strict || false);
+        const result = this.instance!.convert(input, inFmt, outFmt, options.strict || false, options.includeInfo || false);
         if (result.error) throw new Error(result.error);
         return {
             data: result.data,
