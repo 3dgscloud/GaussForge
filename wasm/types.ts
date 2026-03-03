@@ -32,6 +32,7 @@ export interface WriteResult {
 
 export interface ConvertResult {
     data: Uint8Array;
+    modelInfo?: ModelInfo;
     warning?: string;
     error?: string;
 }
