@@ -261,12 +261,16 @@ public:
       if (!ir_or)
         return err(ir_or.error().message);
 
+      // Get modelInfo using input data size
+      gf::ModelInfo info = gf::GetModelInfo(ir_or.value(), data.size());
+
       auto out_or = writer->Write(ir_or.value(), {strict});
       if (!out_or)
         return err(out_or.error().message);
 
       val res = val::object();
       res.set("data", vectorToUint8Array(out_or.value()));
+      res.set("modelInfo", modelInfoToJS(info));
       return res;
     } catch (const std::exception &e) {
       return err(e.what());

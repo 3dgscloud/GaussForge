@@ -114,7 +114,7 @@ async function test() {
         }
 
         // 5. Test format conversion
-        console.log('4️⃣  Testing format conversion...');
+        console.log('5️⃣  Testing format conversion...');
         const outputFormats = ['splat', 'ksplat', 'spz', 'ply', 'compressed.ply', 'sog'];
 
         for (const outFormat of outputFormats) {
@@ -126,6 +126,14 @@ async function test() {
             try {
                 const convertResult = await gaussForge.convert(inputData, 'ply', outFormat);
                 console.log(`   ✅ ply -> ${outFormat}: ${convertResult.data.length} bytes`);
+
+                // Verify modelInfo exists
+                if (convertResult.modelInfo) {
+                    const info = convertResult.modelInfo;
+                    console.log(`      📊 Points: ${info.basic.numPoints}`);
+                    console.log(`      🎨 SH degree: ${info.rendering.shDegree}`);
+                    console.log(`      💾 Total size: ${info.sizes.total}`);
+                }
 
                 // Optionally: Save conversion result
                 const outputFile = path.join(__dirname, `output.${outFormat}`);

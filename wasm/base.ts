@@ -95,7 +95,8 @@ export abstract class GaussForgeBase {
         const result = this.instance!.convert(input, inFmt, outFmt, options.strict || false);
         if (result.error) throw new Error(result.error);
         return {
-            data: result.data
+            data: result.data,
+            ...(result.modelInfo && { modelInfo: result.modelInfo })
         } as ConvertResult;
     }
 
