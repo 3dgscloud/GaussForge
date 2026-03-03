@@ -75,7 +75,7 @@ gf::GaussianCloudIR jsToGaussIR(val jsIR) {
 
   auto fill = [&](val source, std::vector<float> &dest) {
     if (!source.isUndefined() && !source.isNull()) {
-      dest = vecFromJSArray<float>(source); // Embind high-speed conversion
+      dest = convertJSArrayToNumberVector<float>(source);
     }
   };
 
@@ -92,7 +92,7 @@ gf::GaussianCloudIR jsToGaussIR(val jsIR) {
     unsigned int len = keys["length"].as<unsigned int>();
     for (unsigned int i = 0; i < len; ++i) {
       std::string key = keys[i].as<std::string>();
-      ir.extras[key] = vecFromJSArray<float>(ex[key]);
+      ir.extras[key] = convertJSArrayToNumberVector<float>(ex[key]);
     }
   }
 
@@ -207,7 +207,7 @@ public:
 
   val read(val jsData, const std::string &format, bool strict = false) {
     try {
-      std::vector<uint8_t> data = vecFromJSArray<uint8_t>(jsData);
+      std::vector<uint8_t> data = convertJSArrayToNumberVector<uint8_t>(jsData);
       auto *reader = registry_->ReaderForExt(format);
       if (!reader)
         return err("No reader for " + format);
@@ -256,7 +256,7 @@ public:
       if (!reader || !writer)
         return err("Format handler not found");
 
-      std::vector<uint8_t> data = vecFromJSArray<uint8_t>(jsData);
+      std::vector<uint8_t> data = convertJSArrayToNumberVector<uint8_t>(jsData);
       auto ir_or = reader->Read(data.data(), data.size(), {strict});
       if (!ir_or)
         return err(ir_or.error().message);
@@ -286,7 +286,7 @@ public:
 
   val getModelInfo(val jsData, const std::string &format, size_t fileSize = 0) {
     try {
-      std::vector<uint8_t> data = vecFromJSArray<uint8_t>(jsData);
+      std::vector<uint8_t> data = convertJSArrayToNumberVector<uint8_t>(jsData);
       auto *reader = registry_->ReaderForExt(format);
       if (!reader)
         return err("No reader for " + format);
