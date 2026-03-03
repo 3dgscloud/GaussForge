@@ -124,7 +124,7 @@ async function test() {
             }
 
             try {
-                const convertResult = await gaussForge.convert(inputData, 'ply', outFormat);
+                const convertResult = await gaussForge.convert(inputData, 'ply', outFormat, { includeInfo: true });
                 console.log(`   ✅ ply -> ${outFormat}: ${convertResult.data.length} bytes`);
 
                 // Verify modelInfo exists
