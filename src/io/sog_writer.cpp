@@ -171,107 +171,82 @@ std::vector<float> Generate1DCodebook(const std::vector<float> &data,
   return centroids;
 }
 
-// --- Morton Encoding ---
+// --- Morton Encoding (64-bit single-pass) ---
 // Reference: https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+// Uses 21 bits per axis for near-zero collision probability (2M^3 grid)
 
-// Bit expansion: 10-bit -> 30-bit for Morton code calculation
-inline uint32_t Part1By2(uint32_t x) {
-  x &= 0x000003ff; // Keep only the lower 10 bits
-  x = (x ^ (x << 16)) & 0xff0000ff;
-  x = (x ^ (x << 8)) & 0x0300f00f;
-  x = (x ^ (x << 4)) & 0x030c30c3;
-  x = (x ^ (x << 2)) & 0x09249249;
+// Bit expansion: 21-bit -> 63-bit for Morton code calculation
+inline uint64_t ExpandBits21(uint64_t x) {
+  x &= 0x1FFFFF;                              // Keep only the lower 21 bits
+  x = (x | (x << 32)) & 0x001F00000000FFFF;
+  x = (x | (x << 16)) & 0x001F0000FF0000FF;
+  x = (x | (x << 8)) & 0x100F00F00F00F00F;
+  x = (x | (x << 4)) & 0x10C30C30C30C30C3;
+  x = (x | (x << 2)) & 0x1249249249249249;
   return x;
 }
 
-// Encode 3D coordinates into a Morton code (Z-order curve)
-inline uint32_t EncodeMorton3(uint32_t x, uint32_t y, uint32_t z) {
-  return (Part1By2(z) << 2) + (Part1By2(y) << 1) + Part1By2(x);
+// Encode 3D coordinates into a 64-bit Morton code (Z-order curve)
+inline uint64_t EncodeMorton3_64(uint32_t x, uint32_t y, uint32_t z) {
+  return (ExpandBits21(z) << 2) | (ExpandBits21(y) << 1) | ExpandBits21(x);
 }
 
-// Recursive Morton sort (internal implementation)
-void SortMortonOrderRecursive(const std::vector<float> &positions,
-                              std::vector<uint32_t> &indices, size_t start,
-                              size_t end) {
+// Generate Morton-sorted index array (single-pass, no recursion)
+std::vector<uint32_t> GenerateMortonOrder(const std::vector<float> &positions,
+                                          int32_t numPoints) {
+  if (numPoints <= 0)
+    return {};
 
-  if (end - start <= 1)
-    return;
+  const size_t n = static_cast<size_t>(numPoints);
 
-  // 1. Calculate bounding box for current subset
+  // 1. Calculate global bounding box
   float mx = 1e30f, my = 1e30f, mz = 1e30f;
   float Mx = -1e30f, My = -1e30f, Mz = -1e30f;
 
-  for (size_t i = start; i < end; ++i) {
-    const float *p = &positions[indices[i] * 3];
-    mx = std::min(mx, p[0]);
-    Mx = std::max(Mx, p[0]);
-    my = std::min(my, p[1]);
-    My = std::max(My, p[1]);
-    mz = std::min(mz, p[2]);
-    Mz = std::max(Mz, p[2]);
+  for (size_t i = 0; i < n; ++i) {
+    float x = positions[i * 3 + 0];
+    float y = positions[i * 3 + 1];
+    float z = positions[i * 3 + 2];
+    mx = std::min(mx, x);
+    Mx = std::max(Mx, x);
+    my = std::min(my, y);
+    My = std::max(My, y);
+    mz = std::min(mz, z);
+    Mz = std::max(Mz, z);
   }
 
-  float xlen = Mx - mx, ylen = My - my, zlen = Mz - mz;
+  // 2. Calculate quantization factors (21-bit precision)
+  constexpr float kMax21 = 2097151.0f; // 2^21 - 1
+  float xmul = (Mx - mx > 1e-8f) ? kMax21 / (Mx - mx) : 0.0f;
+  float ymul = (My - my > 1e-8f) ? kMax21 / (My - my) : 0.0f;
+  float zmul = (Mz - mz > 1e-8f) ? kMax21 / (Mz - mz) : 0.0f;
 
-  // Boundary check
-  if (!std::isfinite(xlen) || !std::isfinite(ylen) || !std::isfinite(zlen))
-    return;
-  if (xlen == 0 && ylen == 0 && zlen == 0)
-    return;
+  // 3. Compute 64-bit Morton codes
+  std::vector<std::pair<uint64_t, uint32_t>> morton_pairs(n);
+  for (size_t i = 0; i < n; ++i) {
+    uint32_t ix = std::min(
+        2097151u,
+        static_cast<uint32_t>((positions[i * 3 + 0] - mx) * xmul));
+    uint32_t iy = std::min(
+        2097151u,
+        static_cast<uint32_t>((positions[i * 3 + 1] - my) * ymul));
+    uint32_t iz = std::min(
+        2097151u,
+        static_cast<uint32_t>((positions[i * 3 + 2] - mz) * zmul));
 
-  // 2. Calculate quantization factors (10-bit precision)
-  float xmul = (xlen > 1e-8f) ? 1024.0f / xlen : 0.0f;
-  float ymul = (ylen > 1e-8f) ? 1024.0f / ylen : 0.0f;
-  float zmul = (zlen > 1e-8f) ? 1024.0f / zlen : 0.0f;
-
-  // 3. Compute Morton codes
-  std::vector<uint32_t> morton(end - start);
-  for (size_t i = start; i < end; ++i) {
-    const float *p = &positions[indices[i] * 3];
-    uint32_t ix = std::min(1023u, static_cast<uint32_t>((p[0] - mx) * xmul));
-    uint32_t iy = std::min(1023u, static_cast<uint32_t>((p[1] - my) * ymul));
-    uint32_t iz = std::min(1023u, static_cast<uint32_t>((p[2] - mz) * zmul));
-    morton[i - start] = EncodeMorton3(ix, iy, iz);
+    morton_pairs[i] = {EncodeMorton3_64(ix, iy, iz), static_cast<uint32_t>(i)};
   }
 
-  // 4. Create order array for sorting
-  std::vector<uint32_t> order(end - start);
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&morton](uint32_t a, uint32_t b) {
-    return morton[a] < morton[b];
-  });
+  // 4. Single-pass sort by Morton code
+  std::sort(morton_pairs.begin(), morton_pairs.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
 
-  // 5. Reorder indices
-  std::vector<uint32_t> tmp(end - start);
-  for (size_t i = 0; i < end - start; ++i) {
-    tmp[i] = indices[start + order[i]];
-  }
-  for (size_t i = 0; i < end - start; ++i) {
-    indices[start + i] = tmp[i];
+  // 5. Extract sorted indices
+  std::vector<uint32_t> indices(n);
+  for (size_t i = 0; i < n; ++i) {
+    indices[i] = morton_pairs[i].second;
   }
 
-  // 6. Recursively process large buckets (same Morton code, count > 256)
-  size_t s = 0;
-  while (s < end - start) {
-    size_t e = s + 1;
-    while (e < end - start && morton[order[e]] == morton[order[s]]) {
-      ++e;
-    }
-    if (e - s > 256) {
-      SortMortonOrderRecursive(positions, indices, start + s, start + e);
-    }
-    s = e;
-  }
-}
-
-// Generate Morton-sorted index array
-std::vector<uint32_t> GenerateMortonOrder(const std::vector<float> &positions,
-                                          int32_t numPoints) {
-
-  std::vector<uint32_t> indices(static_cast<size_t>(numPoints));
-  std::iota(indices.begin(), indices.end(), 0);
-  SortMortonOrderRecursive(positions, indices, 0,
-                           static_cast<size_t>(numPoints));
   return indices;
 }
 
