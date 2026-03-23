@@ -338,7 +338,8 @@ public:
     meta_json["count"] = count;
     meta_json["antialias"] = ir.meta.antialiased;
 
-    // Morton sort: spatially adjacent points become texture-adjacent, improving compression
+    // Morton sort: spatially adjacent points become texture-adjacent, improving
+    // compression
     std::vector<uint32_t> morton_indices =
         GenerateMortonOrder(ir.positions, ir.numPoints);
 
