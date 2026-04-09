@@ -241,70 +241,99 @@ uint32_t GetPaddedDims(uint32_t dims) {
 }
 
 template <uint32_t D>
-inline float DistanceSquaredFixed(const float *a, const float *b) {
+inline float DotProductFixed(const float *a, const float *b) {
   float sum0 = 0.0f;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
   float sum3 = 0.0f;
   uint32_t d = 0;
   for (; d + 3 < D; d += 4) {
-    const float delta0 = a[d + 0] - b[d + 0];
-    const float delta1 = a[d + 1] - b[d + 1];
-    const float delta2 = a[d + 2] - b[d + 2];
-    const float delta3 = a[d + 3] - b[d + 3];
-    sum0 += delta0 * delta0;
-    sum1 += delta1 * delta1;
-    sum2 += delta2 * delta2;
-    sum3 += delta3 * delta3;
+    sum0 += a[d + 0] * b[d + 0];
+    sum1 += a[d + 1] * b[d + 1];
+    sum2 += a[d + 2] * b[d + 2];
+    sum3 += a[d + 3] * b[d + 3];
   }
   float sum = (sum0 + sum1) + (sum2 + sum3);
   for (; d < D; ++d) {
-    const float delta = a[d] - b[d];
-    sum += delta * delta;
+    sum += a[d] * b[d];
   }
   return sum;
 }
 
-inline float DistanceSquaredDynamic(const float *a, const float *b,
-                                    uint32_t dims) {
+inline float DotProductDynamic(const float *a, const float *b, uint32_t dims) {
   float sum0 = 0.0f;
   float sum1 = 0.0f;
   float sum2 = 0.0f;
   float sum3 = 0.0f;
   uint32_t d = 0;
   for (; d + 3 < dims; d += 4) {
-    const float delta0 = a[d + 0] - b[d + 0];
-    const float delta1 = a[d + 1] - b[d + 1];
-    const float delta2 = a[d + 2] - b[d + 2];
-    const float delta3 = a[d + 3] - b[d + 3];
-    sum0 += delta0 * delta0;
-    sum1 += delta1 * delta1;
-    sum2 += delta2 * delta2;
-    sum3 += delta3 * delta3;
+    sum0 += a[d + 0] * b[d + 0];
+    sum1 += a[d + 1] * b[d + 1];
+    sum2 += a[d + 2] * b[d + 2];
+    sum3 += a[d + 3] * b[d + 3];
   }
   float sum = (sum0 + sum1) + (sum2 + sum3);
   for (; d < dims; ++d) {
-    const float delta = a[d] - b[d];
-    sum += delta * delta;
+    sum += a[d] * b[d];
   }
   return sum;
 }
 
 template <uint32_t D>
+void ComputeNormsFixed(const float *data, uint32_t rows, float *norms) {
+  GF_OMP_PARALLEL_FOR
+  for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
+    const float *row_ptr = data + static_cast<size_t>(row) * D;
+    norms[row] = DotProductFixed<D>(row_ptr, row_ptr);
+  }
+}
+
+void ComputeNormsDynamic(const float *data, uint32_t rows, uint32_t dims,
+                         float *norms) {
+  GF_OMP_PARALLEL_FOR
+  for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
+    const float *row_ptr = data + static_cast<size_t>(row) * dims;
+    norms[row] = DotProductDynamic(row_ptr, row_ptr, dims);
+  }
+}
+
+void ComputeNorms(const float *data, uint32_t rows, uint32_t dims, float *norms) {
+  switch (dims) {
+  case 12:
+    ComputeNormsFixed<12>(data, rows, norms);
+    break;
+  case 24:
+    ComputeNormsFixed<24>(data, rows, norms);
+    break;
+  case 48:
+    ComputeNormsFixed<48>(data, rows, norms);
+    break;
+  default:
+    ComputeNormsDynamic(data, rows, dims, norms);
+    break;
+  }
+}
+
+template <uint32_t D>
 void AssignLabelsFixed(const float *data, const float *centroids, uint32_t rows,
-                       uint32_t centers, uint16_t *labels) {
+                       uint32_t centers, const float *centroid_norms,
+                       uint16_t *labels) {
   GF_OMP_PARALLEL_FOR
   for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
     const float *row_ptr = data + static_cast<size_t>(row) * D;
     uint32_t best = 0;
-    float best_dist =
-        DistanceSquaredFixed<D>(row_ptr, centroids + static_cast<size_t>(best) * D);
+    float best_score = centroid_norms[best] -
+                       2.0f * DotProductFixed<D>(
+                                  row_ptr,
+                                  centroids + static_cast<size_t>(best) * D);
 
     for (uint32_t k = 1; k < centers; ++k) {
-      const float dist = DistanceSquaredFixed<D>(
-          row_ptr, centroids + static_cast<size_t>(k) * D);
-      if (dist < best_dist) {
-        best_dist = dist;
+      const float score = centroid_norms[k] -
+                          2.0f * DotProductFixed<D>(
+                                     row_ptr,
+                                     centroids + static_cast<size_t>(k) * D);
+      if (score < best_score) {
+        best_score = score;
         best = k;
       }
     }
@@ -314,19 +343,26 @@ void AssignLabelsFixed(const float *data, const float *centroids, uint32_t rows,
 }
 
 void AssignLabelsDynamic(const float *data, const float *centroids, uint32_t rows,
-                         uint32_t dims, uint32_t centers, uint16_t *labels) {
+                         uint32_t dims, uint32_t centers,
+                         const float *centroid_norms, uint16_t *labels) {
   GF_OMP_PARALLEL_FOR
   for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
     const float *row_ptr = data + static_cast<size_t>(row) * dims;
     uint32_t best = 0;
-    float best_dist = DistanceSquaredDynamic(
-        row_ptr, centroids + static_cast<size_t>(best) * dims, dims);
+    float best_score = centroid_norms[best] -
+                       2.0f * DotProductDynamic(
+                                  row_ptr,
+                                  centroids + static_cast<size_t>(best) * dims,
+                                  dims);
 
     for (uint32_t k = 1; k < centers; ++k) {
-      const float dist = DistanceSquaredDynamic(
-          row_ptr, centroids + static_cast<size_t>(k) * dims, dims);
-      if (dist < best_dist) {
-        best_dist = dist;
+      const float score = centroid_norms[k] -
+                          2.0f * DotProductDynamic(
+                                     row_ptr,
+                                     centroids + static_cast<size_t>(k) * dims,
+                                     dims);
+      if (score < best_score) {
+        best_score = score;
         best = k;
       }
     }
@@ -336,19 +372,21 @@ void AssignLabelsDynamic(const float *data, const float *centroids, uint32_t row
 }
 
 void AssignLabels(const float *data, const float *centroids, uint32_t rows,
-                  uint32_t dims, uint32_t centers, uint16_t *labels) {
+                  uint32_t dims, uint32_t centers, const float *centroid_norms,
+                  uint16_t *labels) {
   switch (dims) {
   case 12:
-    AssignLabelsFixed<12>(data, centroids, rows, centers, labels);
+    AssignLabelsFixed<12>(data, centroids, rows, centers, centroid_norms, labels);
     break;
   case 24:
-    AssignLabelsFixed<24>(data, centroids, rows, centers, labels);
+    AssignLabelsFixed<24>(data, centroids, rows, centers, centroid_norms, labels);
     break;
   case 48:
-    AssignLabelsFixed<48>(data, centroids, rows, centers, labels);
+    AssignLabelsFixed<48>(data, centroids, rows, centers, centroid_norms, labels);
     break;
   default:
-    AssignLabelsDynamic(data, centroids, rows, dims, centers, labels);
+    AssignLabelsDynamic(data, centroids, rows, dims, centers, centroid_norms,
+                        labels);
     break;
   }
 }
@@ -421,13 +459,16 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
   std::vector<float> next_centroids(static_cast<size_t>(centers) * padded_dims,
                                     0.0f);
   std::vector<uint32_t> counts(centers, 0);
+  std::vector<float> centroid_norms(centers, 0.0f);
 
   for (int iter = 0; iter < iterations; ++iter) {
     std::fill(next_centroids.begin(), next_centroids.end(), 0.0f);
     std::fill(counts.begin(), counts.end(), 0);
 
+    ComputeNorms(padded_centroids.data(), centers, padded_dims,
+                 centroid_norms.data());
     AssignLabels(padded_data.data(), padded_centroids.data(), rows, padded_dims,
-                 centers, result.labels.data());
+                 centers, centroid_norms.data(), result.labels.data());
 
     for (uint32_t row = 0; row < rows; ++row) {
       const uint16_t best = result.labels[row];
