@@ -186,9 +186,8 @@ void SortCodebookAndRemap(std::vector<float> &codebook,
                           std::vector<uint8_t> &indices) {
   std::vector<size_t> order(codebook.size());
   std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-    return codebook[a] < codebook[b];
-  });
+  std::sort(order.begin(), order.end(),
+            [&](size_t a, size_t b) { return codebook[a] < codebook[b]; });
 
   std::vector<uint8_t> remap(codebook.size(), 0);
   std::vector<float> sorted(codebook.size(), 0.0f);
@@ -262,8 +261,8 @@ template <uint32_t D>
 inline float DotProductFixed(const float *a, const float *b) {
   v128_t acc = wasm_f32x4_splat(0.0f);
   for (uint32_t d = 0; d < D; d += 4) {
-    acc = wasm_f32x4_add(acc,
-        wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
+    acc = wasm_f32x4_add(
+        acc, wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
   }
   return DotProductHorizontalSum(acc);
 }
@@ -272,8 +271,8 @@ inline float DotProductDynamic(const float *a, const float *b, uint32_t dims) {
   v128_t acc = wasm_f32x4_splat(0.0f);
   uint32_t d = 0;
   for (; d + 3 < dims; d += 4) {
-    acc = wasm_f32x4_add(acc,
-        wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
+    acc = wasm_f32x4_add(
+        acc, wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
   }
   float tail = 0.0f;
   for (; d < dims; ++d) {
@@ -343,7 +342,8 @@ void ComputeNormsDynamic(const float *data, uint32_t rows, uint32_t dims,
   }
 }
 
-void ComputeNorms(const float *data, uint32_t rows, uint32_t dims, float *norms) {
+void ComputeNorms(const float *data, uint32_t rows, uint32_t dims,
+                  float *norms) {
   switch (dims) {
   case 12:
     ComputeNormsFixed<12>(data, rows, norms);
@@ -368,16 +368,16 @@ void AssignLabelsFixed(const float *data, const float *centroids, uint32_t rows,
   for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
     const float *row_ptr = data + static_cast<size_t>(row) * D;
     uint32_t best = 0;
-    float best_score = centroid_norms[best] -
-                       2.0f * DotProductFixed<D>(
-                                  row_ptr,
+    float best_score =
+        centroid_norms[best] -
+        2.0f * DotProductFixed<D>(row_ptr,
                                   centroids + static_cast<size_t>(best) * D);
 
     for (uint32_t k = 1; k < centers; ++k) {
-      const float score = centroid_norms[k] -
-                          2.0f * DotProductFixed<D>(
-                                     row_ptr,
-                                     centroids + static_cast<size_t>(k) * D);
+      const float score =
+          centroid_norms[k] -
+          2.0f * DotProductFixed<D>(row_ptr,
+                                    centroids + static_cast<size_t>(k) * D);
       if (score < best_score) {
         best_score = score;
         best = k;
@@ -388,25 +388,23 @@ void AssignLabelsFixed(const float *data, const float *centroids, uint32_t rows,
   }
 }
 
-void AssignLabelsDynamic(const float *data, const float *centroids, uint32_t rows,
-                         uint32_t dims, uint32_t centers,
+void AssignLabelsDynamic(const float *data, const float *centroids,
+                         uint32_t rows, uint32_t dims, uint32_t centers,
                          const float *centroid_norms, uint16_t *labels) {
   GF_OMP_PARALLEL_FOR
   for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
     const float *row_ptr = data + static_cast<size_t>(row) * dims;
     uint32_t best = 0;
-    float best_score = centroid_norms[best] -
-                       2.0f * DotProductDynamic(
-                                  row_ptr,
-                                  centroids + static_cast<size_t>(best) * dims,
-                                  dims);
+    float best_score =
+        centroid_norms[best] -
+        2.0f * DotProductDynamic(
+                   row_ptr, centroids + static_cast<size_t>(best) * dims, dims);
 
     for (uint32_t k = 1; k < centers; ++k) {
-      const float score = centroid_norms[k] -
-                          2.0f * DotProductDynamic(
-                                     row_ptr,
-                                     centroids + static_cast<size_t>(k) * dims,
-                                     dims);
+      const float score =
+          centroid_norms[k] -
+          2.0f * DotProductDynamic(
+                     row_ptr, centroids + static_cast<size_t>(k) * dims, dims);
       if (score < best_score) {
         best_score = score;
         best = k;
@@ -422,13 +420,16 @@ void AssignLabels(const float *data, const float *centroids, uint32_t rows,
                   uint16_t *labels) {
   switch (dims) {
   case 12:
-    AssignLabelsFixed<12>(data, centroids, rows, centers, centroid_norms, labels);
+    AssignLabelsFixed<12>(data, centroids, rows, centers, centroid_norms,
+                          labels);
     break;
   case 24:
-    AssignLabelsFixed<24>(data, centroids, rows, centers, centroid_norms, labels);
+    AssignLabelsFixed<24>(data, centroids, rows, centers, centroid_norms,
+                          labels);
     break;
   case 48:
-    AssignLabelsFixed<48>(data, centroids, rows, centers, centroid_norms, labels);
+    AssignLabelsFixed<48>(data, centroids, rows, centers, centroid_norms,
+                          labels);
     break;
   default:
     AssignLabelsDynamic(data, centroids, rows, dims, centers, centroid_norms,
@@ -469,15 +470,16 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
   const uint32_t padded_dims = GetPaddedDims(dims);
   const std::vector<float> padded_data = PadRows(data, rows, dims, padded_dims);
 
-  std::vector<float> padded_centroids(static_cast<size_t>(centers) * padded_dims,
-                                      0.0f);
+  std::vector<float> padded_centroids(
+      static_cast<size_t>(centers) * padded_dims, 0.0f);
   result.labels.resize(rows, 0);
 
   const auto copy_row = [&](uint32_t src_row, uint32_t dst_row,
                             std::vector<float> &dst) {
     const size_t src_offset = static_cast<size_t>(src_row) * padded_dims;
     const size_t dst_offset = static_cast<size_t>(dst_row) * padded_dims;
-    std::copy_n(padded_data.data() + src_offset, padded_dims, dst.data() + dst_offset);
+    std::copy_n(padded_data.data() + src_offset, padded_dims,
+                dst.data() + dst_offset);
   };
 
   if (centers >= rows) {
@@ -490,15 +492,16 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
     }
     result.centroids.resize(static_cast<size_t>(centers) * dims, 0.0f);
     for (uint32_t i = 0; i < centers; ++i) {
-      std::copy_n(padded_centroids.data() + static_cast<size_t>(i) * padded_dims,
-                  dims, result.centroids.data() + static_cast<size_t>(i) * dims);
+      std::copy_n(
+          padded_centroids.data() + static_cast<size_t>(i) * padded_dims, dims,
+          result.centroids.data() + static_cast<size_t>(i) * dims);
     }
     return result;
   }
 
   for (uint32_t k = 0; k < centers; ++k) {
-    const uint32_t sample = static_cast<uint32_t>(
-        (static_cast<uint64_t>(k) * rows) / centers);
+    const uint32_t sample =
+        static_cast<uint32_t>((static_cast<uint64_t>(k) * rows) / centers);
     copy_row(std::min(sample, rows - 1), k, padded_centroids);
   }
 
@@ -536,8 +539,8 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
     for (uint32_t k = 0; k < centers; ++k) {
       const size_t centroid_offset = static_cast<size_t>(k) * padded_dims;
       if (counts[k] == 0) {
-        const uint32_t sample = static_cast<uint32_t>(
-            (static_cast<uint64_t>(k) * rows) / centers);
+        const uint32_t sample =
+            static_cast<uint32_t>((static_cast<uint64_t>(k) * rows) / centers);
         copy_row(std::min(sample, rows - 1), k, padded_centroids);
         continue;
       }
@@ -571,7 +574,7 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
 
 // Bit expansion: 21-bit -> 63-bit for Morton code calculation
 inline uint64_t ExpandBits21(uint64_t x) {
-  x &= 0x1FFFFF;                              // Keep only the lower 21 bits
+  x &= 0x1FFFFF; // Keep only the lower 21 bits
   x = (x | (x << 32)) & 0x001F00000000FFFF;
   x = (x | (x << 16)) & 0x001F0000FF0000FF;
   x = (x | (x << 8)) & 0x100F00F00F00F00F;
@@ -619,14 +622,11 @@ std::vector<uint32_t> GenerateMortonOrder(const std::vector<float> &positions,
   std::vector<std::pair<uint64_t, uint32_t>> morton_pairs(n);
   for (size_t i = 0; i < n; ++i) {
     uint32_t ix = std::min(
-        2097151u,
-        static_cast<uint32_t>((positions[i * 3 + 0] - mx) * xmul));
+        2097151u, static_cast<uint32_t>((positions[i * 3 + 0] - mx) * xmul));
     uint32_t iy = std::min(
-        2097151u,
-        static_cast<uint32_t>((positions[i * 3 + 1] - my) * ymul));
+        2097151u, static_cast<uint32_t>((positions[i * 3 + 1] - my) * ymul));
     uint32_t iz = std::min(
-        2097151u,
-        static_cast<uint32_t>((positions[i * 3 + 2] - mz) * zmul));
+        2097151u, static_cast<uint32_t>((positions[i * 3 + 2] - mz) * zmul));
 
     morton_pairs[i] = {EncodeMorton3_64(ix, iy, iz), static_cast<uint32_t>(i)};
   }
@@ -707,9 +707,15 @@ public:
     const uint32_t sh_bands = static_cast<uint32_t>(ir.meta.shDegree);
     const uint32_t sh_coeffs =
         (sh_bands == 0) ? 0 : (sh_bands + 1) * (sh_bands + 1) - 1;
-    int width =
-        static_cast<int>(std::ceil(std::sqrt(static_cast<float>(count))));
-    int height = (static_cast<int>(count) + width - 1) / width;
+    // Texture dimensions: multiples of 4 for WebP/GPU alignment.
+    // Padding pixels (i > count) remain zero-initialized.
+    int width = static_cast<int>(
+                    std::ceil(std::sqrt(static_cast<double>(count)) / 4.0)) *
+                4;
+    int height =
+        static_cast<int>(
+            std::ceil(static_cast<double>(count) / width / 4.0)) *
+        4;
     size_t tex_size = static_cast<size_t>(width) * static_cast<size_t>(height);
 
     SimpleZipWriter zip;
@@ -717,6 +723,7 @@ public:
     meta_json["version"] = 2;
     meta_json["count"] = count;
     meta_json["antialias"] = ir.meta.antialiased;
+    meta_json["asset"]["generator"] = "GaussForge";
 
     // Morton sort: spatially adjacent points become texture-adjacent, improving
     // compression
@@ -810,8 +817,11 @@ public:
       sh0_rgba[static_cast<size_t>(i) * 4 + 2] =
           sh0_indices[static_cast<size_t>(idx) * 3 + 2];
       float op = 1.0f / (1.0f + std::exp(-ir.alphas[static_cast<size_t>(idx)]));
+      // Clamp to [1/255, 254/255] to avoid alpha=0 or alpha=255,
+      // which may cause WebP or renderers to mishandle edge pixels.
+      op = std::clamp(op, 1.0f / 255.0f, 254.0f / 255.0f);
       sh0_rgba[static_cast<size_t>(i) * 4 + 3] =
-          static_cast<uint8_t>(std::clamp(op * 255.0f, 0.0f, 255.0f));
+          static_cast<uint8_t>(op * 255.0f + 0.5f);
     }
     zip.AddFile("sh0.webp", EncodeWebPLossless(sh0_rgba, width, height));
 
@@ -826,7 +836,8 @@ public:
         const uint32_t idx = morton_indices[static_cast<size_t>(i)];
         const size_t src_offset = static_cast<size_t>(idx) * sh_dims;
         const size_t dst_offset = static_cast<size_t>(i) * sh_dims;
-        std::copy_n(ir.sh.data() + src_offset, sh_dims, sh_vectors.data() + dst_offset);
+        std::copy_n(ir.sh.data() + src_offset, sh_dims,
+                    sh_vectors.data() + dst_offset);
       }
 
       VectorKMeansResult palette =
@@ -843,7 +854,8 @@ public:
 
       GF_OMP_PARALLEL_FOR
       for (int64_t palette_idx_i = 0;
-           palette_idx_i < static_cast<int64_t>(palette_size); ++palette_idx_i) {
+           palette_idx_i < static_cast<int64_t>(palette_size);
+           ++palette_idx_i) {
         const uint32_t palette_idx = static_cast<uint32_t>(palette_idx_i);
         const uint32_t base_x = (palette_idx % 64u) * sh_coeffs;
         const uint32_t y = palette_idx / 64u;
@@ -880,7 +892,8 @@ public:
                   EncodeWebPLossless(centroids_rgba,
                                      static_cast<int>(centroid_width),
                                      static_cast<int>(centroid_height)));
-      zip.AddFile("shN_labels.webp", EncodeWebPLossless(labels_rgba, width, height));
+      zip.AddFile("shN_labels.webp",
+                  EncodeWebPLossless(labels_rgba, width, height));
     }
 
     std::string meta_str = meta_json.dump(2);
