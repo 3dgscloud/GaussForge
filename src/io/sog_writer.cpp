@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <numeric>
 #include <random>
 #include <string>
@@ -171,6 +172,151 @@ std::vector<float> Generate1DCodebook(const std::vector<float> &data,
   return centroids;
 }
 
+void SortCodebookAndRemap(std::vector<float> &codebook,
+                          std::vector<uint8_t> &indices) {
+  std::vector<size_t> order(codebook.size());
+  std::iota(order.begin(), order.end(), 0);
+  std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+    return codebook[a] < codebook[b];
+  });
+
+  std::vector<uint8_t> remap(codebook.size(), 0);
+  std::vector<float> sorted(codebook.size(), 0.0f);
+  for (size_t i = 0; i < order.size(); ++i) {
+    sorted[i] = codebook[order[i]];
+    remap[order[i]] = static_cast<uint8_t>(i);
+  }
+
+  for (auto &idx : indices) {
+    idx = remap[idx];
+  }
+  codebook = std::move(sorted);
+}
+
+std::vector<float> GenerateSorted1DCodebook(const std::vector<float> &data,
+                                            int centers,
+                                            std::vector<uint8_t> &indices) {
+  std::vector<float> codebook = Generate1DCodebook(data, centers, indices);
+  SortCodebookAndRemap(codebook, indices);
+  return codebook;
+}
+
+uint32_t NextPowerOfTwo(uint32_t value) {
+  if (value <= 1) {
+    return 1;
+  }
+  value--;
+  value |= value >> 1;
+  value |= value >> 2;
+  value |= value >> 4;
+  value |= value >> 8;
+  value |= value >> 16;
+  return value + 1;
+}
+
+uint32_t SelectSogShPaletteSize(uint32_t count) {
+  constexpr uint32_t kMinPaletteSize = 1024u;
+  constexpr uint32_t kMaxPaletteSize = 65536u;
+  return std::min(kMaxPaletteSize,
+                  std::max(kMinPaletteSize, NextPowerOfTwo(count)));
+}
+
+struct VectorKMeansResult {
+  std::vector<float> centroids;
+  std::vector<uint16_t> labels;
+};
+
+VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
+                                  uint32_t dims, uint32_t centers,
+                                  int iterations = 10) {
+  VectorKMeansResult result;
+  if (rows == 0 || dims == 0 || centers == 0) {
+    return result;
+  }
+
+  result.centroids.resize(static_cast<size_t>(centers) * dims, 0.0f);
+  result.labels.resize(rows, 0);
+
+  const auto copy_row = [&](uint32_t src_row, uint32_t dst_row,
+                            std::vector<float> &dst) {
+    const size_t src_offset = static_cast<size_t>(src_row) * dims;
+    const size_t dst_offset = static_cast<size_t>(dst_row) * dims;
+    std::copy_n(data.begin() + static_cast<std::ptrdiff_t>(src_offset), dims,
+                dst.begin() + static_cast<std::ptrdiff_t>(dst_offset));
+  };
+
+  if (centers >= rows) {
+    for (uint32_t i = 0; i < rows; ++i) {
+      copy_row(i, i, result.centroids);
+      result.labels[i] = static_cast<uint16_t>(i);
+    }
+    for (uint32_t i = rows; i < centers; ++i) {
+      copy_row(rows - 1, i, result.centroids);
+    }
+    return result;
+  }
+
+  for (uint32_t k = 0; k < centers; ++k) {
+    const uint32_t sample = static_cast<uint32_t>(
+        (static_cast<uint64_t>(k) * rows) / centers);
+    copy_row(std::min(sample, rows - 1), k, result.centroids);
+  }
+
+  std::vector<float> next_centroids(static_cast<size_t>(centers) * dims, 0.0f);
+  std::vector<uint32_t> counts(centers, 0);
+
+  for (int iter = 0; iter < iterations; ++iter) {
+    std::fill(next_centroids.begin(), next_centroids.end(), 0.0f);
+    std::fill(counts.begin(), counts.end(), 0);
+
+    for (uint32_t row = 0; row < rows; ++row) {
+      const size_t row_offset = static_cast<size_t>(row) * dims;
+      uint32_t best = 0;
+      float best_dist = std::numeric_limits<float>::max();
+
+      for (uint32_t k = 0; k < centers; ++k) {
+        const size_t centroid_offset = static_cast<size_t>(k) * dims;
+        float dist = 0.0f;
+        for (uint32_t d = 0; d < dims; ++d) {
+          const float delta =
+              data[row_offset + d] - result.centroids[centroid_offset + d];
+          dist += delta * delta;
+        }
+        if (dist < best_dist) {
+          best_dist = dist;
+          best = k;
+        }
+      }
+
+      result.labels[row] = static_cast<uint16_t>(best);
+      counts[best]++;
+
+      const size_t next_offset = static_cast<size_t>(best) * dims;
+      for (uint32_t d = 0; d < dims; ++d) {
+        next_centroids[next_offset + d] += data[row_offset + d];
+      }
+    }
+
+    for (uint32_t k = 0; k < centers; ++k) {
+      const size_t centroid_offset = static_cast<size_t>(k) * dims;
+      if (counts[k] == 0) {
+        const uint32_t sample = static_cast<uint32_t>(
+            (static_cast<uint64_t>(k) * rows) / centers);
+        copy_row(std::min(sample, rows - 1), k, result.centroids);
+        continue;
+      }
+
+      const float inv_count = 1.0f / static_cast<float>(counts[k]);
+      for (uint32_t d = 0; d < dims; ++d) {
+        result.centroids[centroid_offset + d] =
+            next_centroids[centroid_offset + d] * inv_count;
+      }
+    }
+  }
+
+  return result;
+}
+
 // --- Morton Encoding (64-bit single-pass) ---
 // Reference: https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
 // Uses 21 bits per axis for near-zero collision probability (2M^3 grid)
@@ -298,10 +444,21 @@ class SogWriter : public IGaussWriter {
 public:
   Expected<std::vector<uint8_t>> Write(const GaussianCloudIR &ir,
                                        const WriteOptions &options) override {
+    const auto err = ValidateBasic(ir, options.strict);
+    if (!err.message.empty()) {
+      return Expected<std::vector<uint8_t>>(err);
+    }
+
     if (ir.numPoints <= 0)
       return MakeError("SOG: Empty cloud");
+    if (ir.meta.shDegree < 0 || ir.meta.shDegree > 3) {
+      return MakeError("SOG: Only SH degrees 0-3 are supported");
+    }
 
     uint32_t count = static_cast<uint32_t>(ir.numPoints);
+    const uint32_t sh_bands = static_cast<uint32_t>(ir.meta.shDegree);
+    const uint32_t sh_coeffs =
+        (sh_bands == 0) ? 0 : (sh_bands + 1) * (sh_bands + 1) - 1;
     int width =
         static_cast<int>(std::ceil(std::sqrt(static_cast<float>(count))));
     int height = (static_cast<int>(count) + width - 1) / width;
@@ -373,7 +530,7 @@ public:
     // 3. Scales (1D Codebook)
     std::vector<uint8_t> scale_indices;
     std::vector<float> scale_cb =
-        Generate1DCodebook(ir.scales, 256, scale_indices);
+        GenerateSorted1DCodebook(ir.scales, 256, scale_indices);
     meta_json["scales"]["codebook"] = scale_cb;
     meta_json["scales"]["files"] = {"scales.webp"};
     std::vector<uint8_t> scales_rgba(tex_size * 4, 0);
@@ -391,7 +548,8 @@ public:
 
     // 4. SH0 + Opacity (1D Codebook)
     std::vector<uint8_t> sh0_indices;
-    std::vector<float> sh0_cb = Generate1DCodebook(ir.colors, 256, sh0_indices);
+    std::vector<float> sh0_cb =
+        GenerateSorted1DCodebook(ir.colors, 256, sh0_indices);
     meta_json["sh0"]["codebook"] = sh0_cb;
     meta_json["sh0"]["files"] = {"sh0.webp"};
     std::vector<uint8_t> sh0_rgba(tex_size * 4, 0);
@@ -408,6 +566,70 @@ public:
           static_cast<uint8_t>(std::clamp(op * 255.0f, 0.0f, 255.0f));
     }
     zip.AddFile("sh0.webp", EncodeWebPLossless(sh0_rgba, width, height));
+
+    // 5. Higher-order SH (palette + shared scalar codebook)
+    if (sh_bands > 0 && !ir.sh.empty()) {
+      const uint32_t palette_size = SelectSogShPaletteSize(count);
+      const uint32_t sh_dims = sh_coeffs * 3;
+
+      std::vector<float> sh_vectors(static_cast<size_t>(count) * sh_dims, 0.0f);
+      for (uint32_t i = 0; i < count; ++i) {
+        const uint32_t idx = morton_indices[i];
+        const size_t src_offset = static_cast<size_t>(idx) * sh_dims;
+        const size_t dst_offset = static_cast<size_t>(i) * sh_dims;
+        std::copy_n(ir.sh.begin() + static_cast<std::ptrdiff_t>(src_offset), sh_dims,
+                    sh_vectors.begin() + static_cast<std::ptrdiff_t>(dst_offset));
+      }
+
+      VectorKMeansResult palette =
+          ClusterVectors(sh_vectors, count, sh_dims, palette_size);
+
+      std::vector<uint8_t> shn_scalar_indices;
+      std::vector<float> shn_codebook =
+          GenerateSorted1DCodebook(palette.centroids, 256, shn_scalar_indices);
+
+      const uint32_t centroid_width = 64u * sh_coeffs;
+      const uint32_t centroid_height = (palette_size + 63u) / 64u;
+      std::vector<uint8_t> centroids_rgba(
+          static_cast<size_t>(centroid_width) * centroid_height * 4, 0);
+
+      for (uint32_t palette_idx = 0; palette_idx < palette_size; ++palette_idx) {
+        const uint32_t base_x = (palette_idx % 64u) * sh_coeffs;
+        const uint32_t y = palette_idx / 64u;
+        const size_t centroid_base = static_cast<size_t>(palette_idx) * sh_dims;
+
+        for (uint32_t coeff = 0; coeff < sh_coeffs; ++coeff) {
+          const size_t pixel =
+              (static_cast<size_t>(y) * centroid_width + base_x + coeff) * 4;
+          const size_t scalar = centroid_base + static_cast<size_t>(coeff) * 3;
+          centroids_rgba[pixel + 0] = shn_scalar_indices[scalar + 0];
+          centroids_rgba[pixel + 1] = shn_scalar_indices[scalar + 1];
+          centroids_rgba[pixel + 2] = shn_scalar_indices[scalar + 2];
+          centroids_rgba[pixel + 3] = 255;
+        }
+      }
+
+      std::vector<uint8_t> labels_rgba(tex_size * 4, 0);
+      for (uint32_t i = 0; i < count; ++i) {
+        const uint16_t label = palette.labels[i];
+        labels_rgba[static_cast<size_t>(i) * 4 + 0] =
+            static_cast<uint8_t>(label & 0xFF);
+        labels_rgba[static_cast<size_t>(i) * 4 + 1] =
+            static_cast<uint8_t>((label >> 8) & 0xFF);
+        labels_rgba[static_cast<size_t>(i) * 4 + 3] = 255;
+      }
+
+      meta_json["shN"]["count"] = palette_size;
+      meta_json["shN"]["bands"] = sh_bands;
+      meta_json["shN"]["codebook"] = shn_codebook;
+      meta_json["shN"]["files"] = {"shN_centroids.webp", "shN_labels.webp"};
+
+      zip.AddFile("shN_centroids.webp",
+                  EncodeWebPLossless(centroids_rgba,
+                                     static_cast<int>(centroid_width),
+                                     static_cast<int>(centroid_height)));
+      zip.AddFile("shN_labels.webp", EncodeWebPLossless(labels_rgba, width, height));
+    }
 
     std::string meta_str = meta_json.dump(2);
     std::vector<uint8_t> meta_bytes(meta_str.begin(), meta_str.end());
