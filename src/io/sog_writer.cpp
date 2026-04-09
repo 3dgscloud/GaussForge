@@ -25,6 +25,12 @@ namespace gf {
 
 namespace {
 
+#if defined(_OPENMP)
+#define GF_OMP_PARALLEL_FOR _Pragma("omp parallel for schedule(static)")
+#else
+#define GF_OMP_PARALLEL_FOR
+#endif
+
 // --- Simple ZIP Writer ---
 
 class SimpleZipWriter {
@@ -221,6 +227,148 @@ uint32_t SelectSogShPaletteSize(uint32_t count) {
                   std::max(kMinPaletteSize, NextPowerOfTwo(count)));
 }
 
+uint32_t GetPaddedDims(uint32_t dims) {
+  switch (dims) {
+  case 9:
+    return 12;
+  case 24:
+    return 24;
+  case 45:
+    return 48;
+  default:
+    return dims;
+  }
+}
+
+template <uint32_t D>
+inline float DistanceSquaredFixed(const float *a, const float *b) {
+  float sum0 = 0.0f;
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
+  float sum3 = 0.0f;
+  uint32_t d = 0;
+  for (; d + 3 < D; d += 4) {
+    const float delta0 = a[d + 0] - b[d + 0];
+    const float delta1 = a[d + 1] - b[d + 1];
+    const float delta2 = a[d + 2] - b[d + 2];
+    const float delta3 = a[d + 3] - b[d + 3];
+    sum0 += delta0 * delta0;
+    sum1 += delta1 * delta1;
+    sum2 += delta2 * delta2;
+    sum3 += delta3 * delta3;
+  }
+  float sum = (sum0 + sum1) + (sum2 + sum3);
+  for (; d < D; ++d) {
+    const float delta = a[d] - b[d];
+    sum += delta * delta;
+  }
+  return sum;
+}
+
+inline float DistanceSquaredDynamic(const float *a, const float *b,
+                                    uint32_t dims) {
+  float sum0 = 0.0f;
+  float sum1 = 0.0f;
+  float sum2 = 0.0f;
+  float sum3 = 0.0f;
+  uint32_t d = 0;
+  for (; d + 3 < dims; d += 4) {
+    const float delta0 = a[d + 0] - b[d + 0];
+    const float delta1 = a[d + 1] - b[d + 1];
+    const float delta2 = a[d + 2] - b[d + 2];
+    const float delta3 = a[d + 3] - b[d + 3];
+    sum0 += delta0 * delta0;
+    sum1 += delta1 * delta1;
+    sum2 += delta2 * delta2;
+    sum3 += delta3 * delta3;
+  }
+  float sum = (sum0 + sum1) + (sum2 + sum3);
+  for (; d < dims; ++d) {
+    const float delta = a[d] - b[d];
+    sum += delta * delta;
+  }
+  return sum;
+}
+
+template <uint32_t D>
+void AssignLabelsFixed(const float *data, const float *centroids, uint32_t rows,
+                       uint32_t centers, uint16_t *labels) {
+  GF_OMP_PARALLEL_FOR
+  for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
+    const float *row_ptr = data + static_cast<size_t>(row) * D;
+    uint32_t best = 0;
+    float best_dist =
+        DistanceSquaredFixed<D>(row_ptr, centroids + static_cast<size_t>(best) * D);
+
+    for (uint32_t k = 1; k < centers; ++k) {
+      const float dist = DistanceSquaredFixed<D>(
+          row_ptr, centroids + static_cast<size_t>(k) * D);
+      if (dist < best_dist) {
+        best_dist = dist;
+        best = k;
+      }
+    }
+
+    labels[row] = static_cast<uint16_t>(best);
+  }
+}
+
+void AssignLabelsDynamic(const float *data, const float *centroids, uint32_t rows,
+                         uint32_t dims, uint32_t centers, uint16_t *labels) {
+  GF_OMP_PARALLEL_FOR
+  for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
+    const float *row_ptr = data + static_cast<size_t>(row) * dims;
+    uint32_t best = 0;
+    float best_dist = DistanceSquaredDynamic(
+        row_ptr, centroids + static_cast<size_t>(best) * dims, dims);
+
+    for (uint32_t k = 1; k < centers; ++k) {
+      const float dist = DistanceSquaredDynamic(
+          row_ptr, centroids + static_cast<size_t>(k) * dims, dims);
+      if (dist < best_dist) {
+        best_dist = dist;
+        best = k;
+      }
+    }
+
+    labels[row] = static_cast<uint16_t>(best);
+  }
+}
+
+void AssignLabels(const float *data, const float *centroids, uint32_t rows,
+                  uint32_t dims, uint32_t centers, uint16_t *labels) {
+  switch (dims) {
+  case 12:
+    AssignLabelsFixed<12>(data, centroids, rows, centers, labels);
+    break;
+  case 24:
+    AssignLabelsFixed<24>(data, centroids, rows, centers, labels);
+    break;
+  case 48:
+    AssignLabelsFixed<48>(data, centroids, rows, centers, labels);
+    break;
+  default:
+    AssignLabelsDynamic(data, centroids, rows, dims, centers, labels);
+    break;
+  }
+}
+
+std::vector<float> PadRows(const std::vector<float> &data, uint32_t rows,
+                           uint32_t dims, uint32_t padded_dims) {
+  if (dims == padded_dims) {
+    return data;
+  }
+
+  std::vector<float> padded(static_cast<size_t>(rows) * padded_dims, 0.0f);
+  GF_OMP_PARALLEL_FOR
+  for (int64_t row = 0; row < static_cast<int64_t>(rows); ++row) {
+    const size_t src_offset = static_cast<size_t>(row) * dims;
+    const size_t dst_offset = static_cast<size_t>(row) * padded_dims;
+    std::copy_n(data.data() + src_offset, dims, padded.data() + dst_offset);
+  }
+  return padded;
+}
+
 struct VectorKMeansResult {
   std::vector<float> centroids;
   std::vector<uint16_t> labels;
@@ -234,24 +382,32 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
     return result;
   }
 
-  result.centroids.resize(static_cast<size_t>(centers) * dims, 0.0f);
+  const uint32_t padded_dims = GetPaddedDims(dims);
+  const std::vector<float> padded_data = PadRows(data, rows, dims, padded_dims);
+
+  std::vector<float> padded_centroids(static_cast<size_t>(centers) * padded_dims,
+                                      0.0f);
   result.labels.resize(rows, 0);
 
   const auto copy_row = [&](uint32_t src_row, uint32_t dst_row,
                             std::vector<float> &dst) {
-    const size_t src_offset = static_cast<size_t>(src_row) * dims;
-    const size_t dst_offset = static_cast<size_t>(dst_row) * dims;
-    std::copy_n(data.begin() + static_cast<std::ptrdiff_t>(src_offset), dims,
-                dst.begin() + static_cast<std::ptrdiff_t>(dst_offset));
+    const size_t src_offset = static_cast<size_t>(src_row) * padded_dims;
+    const size_t dst_offset = static_cast<size_t>(dst_row) * padded_dims;
+    std::copy_n(padded_data.data() + src_offset, padded_dims, dst.data() + dst_offset);
   };
 
   if (centers >= rows) {
     for (uint32_t i = 0; i < rows; ++i) {
-      copy_row(i, i, result.centroids);
+      copy_row(i, i, padded_centroids);
       result.labels[i] = static_cast<uint16_t>(i);
     }
     for (uint32_t i = rows; i < centers; ++i) {
-      copy_row(rows - 1, i, result.centroids);
+      copy_row(rows - 1, i, padded_centroids);
+    }
+    result.centroids.resize(static_cast<size_t>(centers) * dims, 0.0f);
+    for (uint32_t i = 0; i < centers; ++i) {
+      std::copy_n(padded_centroids.data() + static_cast<size_t>(i) * padded_dims,
+                  dims, result.centroids.data() + static_cast<size_t>(i) * dims);
     }
     return result;
   }
@@ -259,59 +415,53 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
   for (uint32_t k = 0; k < centers; ++k) {
     const uint32_t sample = static_cast<uint32_t>(
         (static_cast<uint64_t>(k) * rows) / centers);
-    copy_row(std::min(sample, rows - 1), k, result.centroids);
+    copy_row(std::min(sample, rows - 1), k, padded_centroids);
   }
 
-  std::vector<float> next_centroids(static_cast<size_t>(centers) * dims, 0.0f);
+  std::vector<float> next_centroids(static_cast<size_t>(centers) * padded_dims,
+                                    0.0f);
   std::vector<uint32_t> counts(centers, 0);
 
   for (int iter = 0; iter < iterations; ++iter) {
     std::fill(next_centroids.begin(), next_centroids.end(), 0.0f);
     std::fill(counts.begin(), counts.end(), 0);
 
+    AssignLabels(padded_data.data(), padded_centroids.data(), rows, padded_dims,
+                 centers, result.labels.data());
+
     for (uint32_t row = 0; row < rows; ++row) {
-      const size_t row_offset = static_cast<size_t>(row) * dims;
-      uint32_t best = 0;
-      float best_dist = std::numeric_limits<float>::max();
-
-      for (uint32_t k = 0; k < centers; ++k) {
-        const size_t centroid_offset = static_cast<size_t>(k) * dims;
-        float dist = 0.0f;
-        for (uint32_t d = 0; d < dims; ++d) {
-          const float delta =
-              data[row_offset + d] - result.centroids[centroid_offset + d];
-          dist += delta * delta;
-        }
-        if (dist < best_dist) {
-          best_dist = dist;
-          best = k;
-        }
-      }
-
-      result.labels[row] = static_cast<uint16_t>(best);
+      const uint16_t best = result.labels[row];
       counts[best]++;
 
-      const size_t next_offset = static_cast<size_t>(best) * dims;
-      for (uint32_t d = 0; d < dims; ++d) {
-        next_centroids[next_offset + d] += data[row_offset + d];
+      const size_t row_offset = static_cast<size_t>(row) * padded_dims;
+      const size_t next_offset = static_cast<size_t>(best) * padded_dims;
+      for (uint32_t d = 0; d < padded_dims; ++d) {
+        next_centroids[next_offset + d] += padded_data[row_offset + d];
       }
     }
 
     for (uint32_t k = 0; k < centers; ++k) {
-      const size_t centroid_offset = static_cast<size_t>(k) * dims;
+      const size_t centroid_offset = static_cast<size_t>(k) * padded_dims;
       if (counts[k] == 0) {
         const uint32_t sample = static_cast<uint32_t>(
             (static_cast<uint64_t>(k) * rows) / centers);
-        copy_row(std::min(sample, rows - 1), k, result.centroids);
+        copy_row(std::min(sample, rows - 1), k, padded_centroids);
         continue;
       }
 
       const float inv_count = 1.0f / static_cast<float>(counts[k]);
-      for (uint32_t d = 0; d < dims; ++d) {
-        result.centroids[centroid_offset + d] =
+      for (uint32_t d = 0; d < padded_dims; ++d) {
+        padded_centroids[centroid_offset + d] =
             next_centroids[centroid_offset + d] * inv_count;
       }
     }
+  }
+
+  result.centroids.resize(static_cast<size_t>(centers) * dims, 0.0f);
+  GF_OMP_PARALLEL_FOR
+  for (int64_t k = 0; k < static_cast<int64_t>(centers); ++k) {
+    std::copy_n(padded_centroids.data() + static_cast<size_t>(k) * padded_dims,
+                dims, result.centroids.data() + static_cast<size_t>(k) * dims);
   }
 
   return result;
@@ -573,12 +723,12 @@ public:
       const uint32_t sh_dims = sh_coeffs * 3;
 
       std::vector<float> sh_vectors(static_cast<size_t>(count) * sh_dims, 0.0f);
-      for (uint32_t i = 0; i < count; ++i) {
-        const uint32_t idx = morton_indices[i];
+      GF_OMP_PARALLEL_FOR
+      for (int64_t i = 0; i < static_cast<int64_t>(count); ++i) {
+        const uint32_t idx = morton_indices[static_cast<size_t>(i)];
         const size_t src_offset = static_cast<size_t>(idx) * sh_dims;
         const size_t dst_offset = static_cast<size_t>(i) * sh_dims;
-        std::copy_n(ir.sh.begin() + static_cast<std::ptrdiff_t>(src_offset), sh_dims,
-                    sh_vectors.begin() + static_cast<std::ptrdiff_t>(dst_offset));
+        std::copy_n(ir.sh.data() + src_offset, sh_dims, sh_vectors.data() + dst_offset);
       }
 
       VectorKMeansResult palette =
@@ -593,7 +743,10 @@ public:
       std::vector<uint8_t> centroids_rgba(
           static_cast<size_t>(centroid_width) * centroid_height * 4, 0);
 
-      for (uint32_t palette_idx = 0; palette_idx < palette_size; ++palette_idx) {
+      GF_OMP_PARALLEL_FOR
+      for (int64_t palette_idx_i = 0;
+           palette_idx_i < static_cast<int64_t>(palette_size); ++palette_idx_i) {
+        const uint32_t palette_idx = static_cast<uint32_t>(palette_idx_i);
         const uint32_t base_x = (palette_idx % 64u) * sh_coeffs;
         const uint32_t y = palette_idx / 64u;
         const size_t centroid_base = static_cast<size_t>(palette_idx) * sh_dims;
@@ -610,8 +763,9 @@ public:
       }
 
       std::vector<uint8_t> labels_rgba(tex_size * 4, 0);
-      for (uint32_t i = 0; i < count; ++i) {
-        const uint16_t label = palette.labels[i];
+      GF_OMP_PARALLEL_FOR
+      for (int64_t i = 0; i < static_cast<int64_t>(count); ++i) {
+        const uint16_t label = palette.labels[static_cast<size_t>(i)];
         labels_rgba[static_cast<size_t>(i) * 4 + 0] =
             static_cast<uint8_t>(label & 0xFF);
         labels_rgba[static_cast<size_t>(i) * 4 + 1] =

@@ -7,6 +7,7 @@ project(gauss_forge
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(GAUSS_FORGE_ENABLE_OPENMP "Enable OpenMP acceleration for native builds" ON)
 
 # Generate version header from template
 configure_file(
@@ -97,6 +98,16 @@ target_include_directories(gauss_forge PUBLIC
 )
 # Ensure all targets can link to dependencies
 target_link_libraries(gauss_forge PUBLIC spz::spz webp nlohmann_json::nlohmann_json ZLIB::ZLIB)
+
+if(GAUSS_FORGE_ENABLE_OPENMP AND NOT EMSCRIPTEN)
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(gauss_forge PUBLIC OpenMP::OpenMP_CXX)
+        message(STATUS "OpenMP enabled for gauss_forge")
+    else()
+        message(STATUS "OpenMP requested but not found; building without it")
+    endif()
+endif()
 
 
 # --------------------------------------------------------
