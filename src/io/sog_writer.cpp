@@ -15,6 +15,10 @@
 #include <webp/encode.h>
 #include <zlib.h>
 
+#ifdef __EMSCRIPTEN__
+#include <wasm_simd128.h>
+#endif
+
 #include "gf/core/errors.h"
 #include "gf/core/gauss_ir.h"
 #include "gf/core/validate.h"
@@ -222,7 +226,11 @@ uint32_t NextPowerOfTwo(uint32_t value) {
 
 uint32_t SelectSogShPaletteSize(uint32_t count) {
   constexpr uint32_t kMinPaletteSize = 1024u;
+#ifdef __EMSCRIPTEN__
+  constexpr uint32_t kMaxPaletteSize = 16384u;
+#else
   constexpr uint32_t kMaxPaletteSize = 65536u;
+#endif
   return std::min(kMaxPaletteSize,
                   std::max(kMinPaletteSize, NextPowerOfTwo(count)));
 }
@@ -239,6 +247,42 @@ uint32_t GetPaddedDims(uint32_t dims) {
     return dims;
   }
 }
+
+#ifdef __EMSCRIPTEN__
+
+inline float DotProductHorizontalSum(v128_t acc) {
+  v128_t shuf = wasm_i32x4_shuffle(acc, acc, 2, 3, 0, 1);
+  acc = wasm_f32x4_add(acc, shuf);
+  shuf = wasm_i32x4_shuffle(acc, acc, 1, 0, 3, 2);
+  acc = wasm_f32x4_add(acc, shuf);
+  return wasm_f32x4_extract_lane(acc, 0);
+}
+
+template <uint32_t D>
+inline float DotProductFixed(const float *a, const float *b) {
+  v128_t acc = wasm_f32x4_splat(0.0f);
+  for (uint32_t d = 0; d < D; d += 4) {
+    acc = wasm_f32x4_add(acc,
+        wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
+  }
+  return DotProductHorizontalSum(acc);
+}
+
+inline float DotProductDynamic(const float *a, const float *b, uint32_t dims) {
+  v128_t acc = wasm_f32x4_splat(0.0f);
+  uint32_t d = 0;
+  for (; d + 3 < dims; d += 4) {
+    acc = wasm_f32x4_add(acc,
+        wasm_f32x4_mul(wasm_v128_load(a + d), wasm_v128_load(b + d)));
+  }
+  float tail = 0.0f;
+  for (; d < dims; ++d) {
+    tail += a[d] * b[d];
+  }
+  return DotProductHorizontalSum(acc) + tail;
+}
+
+#else
 
 template <uint32_t D>
 inline float DotProductFixed(const float *a, const float *b) {
@@ -278,6 +322,8 @@ inline float DotProductDynamic(const float *a, const float *b, uint32_t dims) {
   }
   return sum;
 }
+
+#endif
 
 template <uint32_t D>
 void ComputeNormsFixed(const float *data, uint32_t rows, float *norms) {
@@ -460,17 +506,23 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
                                     0.0f);
   std::vector<uint32_t> counts(centers, 0);
   std::vector<float> centroid_norms(centers, 0.0f);
+  std::vector<uint16_t> prev_labels(rows, 0);
 
   for (int iter = 0; iter < iterations; ++iter) {
     std::fill(next_centroids.begin(), next_centroids.end(), 0.0f);
     std::fill(counts.begin(), counts.end(), 0);
+    std::swap(prev_labels, result.labels);
 
     ComputeNorms(padded_centroids.data(), centers, padded_dims,
                  centroid_norms.data());
     AssignLabels(padded_data.data(), padded_centroids.data(), rows, padded_dims,
                  centers, centroid_norms.data(), result.labels.data());
 
+    uint32_t changed = 0;
     for (uint32_t row = 0; row < rows; ++row) {
+      if (result.labels[row] != prev_labels[row]) {
+        changed++;
+      }
       const uint16_t best = result.labels[row];
       counts[best]++;
 
@@ -495,6 +547,11 @@ VectorKMeansResult ClusterVectors(const std::vector<float> &data, uint32_t rows,
         padded_centroids[centroid_offset + d] =
             next_centroids[centroid_offset + d] * inv_count;
       }
+    }
+
+    if (iter > 0 &&
+        static_cast<float>(changed) / static_cast<float>(rows) < 0.01f) {
+      break;
     }
   }
 
