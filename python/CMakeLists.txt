@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.26)
 
 project(gaussforge_python
-    VERSION 0.5.5
+    VERSION 0.6.0
     LANGUAGES CXX C
 )
 
