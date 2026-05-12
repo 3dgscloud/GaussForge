@@ -230,13 +230,14 @@ public:
     }
   }
 
-  val write(val jsIR, const std::string &format, bool strict = false) {
+  val write(val jsIR, const std::string &format, bool strict = false,
+            uint32_t spzVersion = 3) {
     try {
       auto *writer = registry_->WriterForExt(format);
       if (!writer)
         return err("No writer for " + format);
 
-      auto data_or = writer->Write(jsToGaussIR(jsIR), {strict});
+      auto data_or = writer->Write(jsToGaussIR(jsIR), {strict, spzVersion});
       if (!data_or)
         return err(data_or.error().message);
 
@@ -249,7 +250,8 @@ public:
   }
 
   val convert(val jsData, const std::string &inF, const std::string &outF,
-              bool strict = false, bool includeInfo = false) {
+              bool strict = false, bool includeInfo = false,
+              uint32_t spzVersion = 3) {
     try {
       auto *reader = registry_->ReaderForExt(inF);
       auto *writer = registry_->WriterForExt(outF);
@@ -261,7 +263,7 @@ public:
       if (!ir_or)
         return err(ir_or.error().message);
 
-      auto out_or = writer->Write(ir_or.value(), {strict});
+      auto out_or = writer->Write(ir_or.value(), {strict, spzVersion});
       if (!out_or)
         return err(out_or.error().message);
 

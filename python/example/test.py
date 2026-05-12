@@ -9,12 +9,20 @@ Usage:
 
 import os
 import sys
+import gzip
 from pathlib import Path
 
 # Add parent directory to path for development testing
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from gaussforge import GaussForge, get_version
+
+
+def get_spz_version(data: bytes) -> int:
+    header = gzip.decompress(data) if data[:2] == b"\x1f\x8b" else data
+    if header[:4] != b"NGSP":
+        raise ValueError(f"Invalid SPZ magic: {header[:4]!r}")
+    return int.from_bytes(header[4:8], "little")
 
 
 def main():
@@ -133,6 +141,33 @@ def main():
                     print(f"      Saved to: {output_file}")
             except Exception as e:
                 print(f"   ply -> {out_format} failed: {e}")
+
+        # 7. Test SPZ version selection
+        print("\n7. Testing SPZ version selection...")
+        for spz_version in (2, 3, 4):
+            convert_result = gf.convert(
+                input_data, "ply", "spz", spz_version=spz_version
+            )
+            if "error" in convert_result:
+                print(f"   ply -> spz v{spz_version} failed: {convert_result['error']}")
+                sys.exit(1)
+
+            actual_version = get_spz_version(convert_result["data"])
+            if actual_version != spz_version:
+                print(f"   Expected SPZ v{spz_version}, got v{actual_version}")
+                sys.exit(1)
+
+            output_file = Path(__file__).parent / f"output.v{spz_version}.spz"
+            with open(output_file, "wb") as f:
+                f.write(convert_result["data"])
+            print(f"   ply -> spz v{spz_version}: {len(convert_result['data'])} bytes")
+
+        default_spz = gf.convert(input_data, "ply", "spz")
+        default_version = get_spz_version(default_spz["data"])
+        if default_version != 3:
+            print(f"   Expected default SPZ v3, got v{default_version}")
+            sys.exit(1)
+        print("   Default SPZ version is v3")
 
         print("\n" + "=" * 60)
         print("All tests completed!")

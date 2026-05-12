@@ -227,13 +227,14 @@ public:
     }
 
     nb::dict write(nb::dict pyIR, const std::string &format,
-                   bool strict = false) {
+                   bool strict = false, uint32_t spz_version = 3) {
         try {
             auto *writer = registry_->WriterForExt(format);
             if (!writer)
                 return err("No writer for " + format);
 
-            auto data_or = writer->Write(pyToGaussIR(pyIR), {strict});
+            auto data_or =
+                writer->Write(pyToGaussIR(pyIR), {strict, spz_version});
             if (!data_or)
                 return err(data_or.error().message);
 
@@ -248,7 +249,8 @@ public:
     }
 
     nb::dict convert(nb::bytes pyData, const std::string &inFormat,
-                     const std::string &outFormat, bool strict = false) {
+                     const std::string &outFormat, bool strict = false,
+                     uint32_t spz_version = 3) {
         try {
             auto *reader = registry_->ReaderForExt(inFormat);
             auto *writer = registry_->WriterForExt(outFormat);
@@ -263,7 +265,7 @@ public:
             if (!ir_or)
                 return err(ir_or.error().message);
 
-            auto out_or = writer->Write(ir_or.value(), {strict});
+            auto out_or = writer->Write(ir_or.value(), {strict, spz_version});
             if (!out_or)
                 return err(out_or.error().message);
 
@@ -334,11 +336,11 @@ NB_MODULE(_core, m) {
              "Read Gaussian data from bytes. Returns dict with 'data' or "
              "'error'.")
         .def("write", &GaussForgePy::write, nb::arg("ir"), nb::arg("format"),
-             nb::arg("strict") = false,
+             nb::arg("strict") = false, nb::arg("spz_version") = 3,
              "Write Gaussian IR to bytes. Returns dict with 'data' or 'error'.")
         .def("convert", &GaussForgePy::convert, nb::arg("data"),
              nb::arg("in_format"), nb::arg("out_format"),
-             nb::arg("strict") = false,
+             nb::arg("strict") = false, nb::arg("spz_version") = 3,
              "Convert between formats. Returns dict with 'data' or 'error'.")
         .def("get_supported_formats", &GaussForgePy::getSupportedFormats,
              "Get list of supported format names.")
