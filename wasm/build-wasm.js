@@ -123,10 +123,20 @@ function copyOutputFiles(outputName) {
     fs.copyFileSync(jsFile, outputJsFile);
     console.log(`✓ Copied ${jsFile} -> ${outputJsFile}`);
 
+    const distDir = path.join(WASM_DIR, 'dist');
+    fs.mkdirSync(distDir, { recursive: true });
+    const distJsFile = path.join(distDir, `${outputName}.js`);
+    fs.copyFileSync(jsFile, distJsFile);
+    console.log(`✓ Copied ${jsFile} -> ${distJsFile}`);
+
     if (fs.existsSync(wasmFile)) {
         const outputWasmFile = path.join(WASM_DIR, `${outputName}.wasm`);
         fs.copyFileSync(wasmFile, outputWasmFile);
         console.log(`✓ Copied ${wasmFile} -> ${outputWasmFile}`);
+
+        const distWasmFile = path.join(distDir, `${outputName}.wasm`);
+        fs.copyFileSync(wasmFile, distWasmFile);
+        console.log(`✓ Copied ${wasmFile} -> ${distWasmFile}`);
     }
 }
 
@@ -167,4 +177,3 @@ function main() {
 }
 
 main();
-

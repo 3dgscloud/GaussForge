@@ -101,6 +101,7 @@ Write Gaussian splatting data.
 - `ir`: `GaussianCloudIR` - Gaussian splatting intermediate representation
 - `format`: `SupportedFormat | string` - Output format
 - `options.strict`: `boolean` - Whether to use strict mode
+- `options.spzVersion`: `2 | 3 | 4` - SPZ output version when writing SPZ (default: `3`)
 
 Returns: `Promise<WriteResult>`
 
@@ -112,6 +113,7 @@ Convert file format.
 - `inFormat`: `SupportedFormat | string` - Input format
 - `outFormat`: `SupportedFormat | string` - Output format
 - `options.strict`: `boolean` - Whether to use strict mode
+- `options.spzVersion`: `2 | 3 | 4` - SPZ output version when converting to SPZ (default: `3`)
 
 Returns: `Promise<ConvertResult>`
 
@@ -179,4 +181,3 @@ try {
 - Emscripten SDK (for building WASM)
 - Node.js 18+ (for development)
 - TypeScript 5+ (for development)
-

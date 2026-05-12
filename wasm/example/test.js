@@ -13,12 +13,27 @@
 import { createGaussForge } from '@gaussforge/wasm';
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TEST_FILE = path.join(__dirname, 'tiny_gauss.ply');
+
+function getSpzVersion(data) {
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+    let header = bytes;
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+        header = zlib.gunzipSync(bytes);
+    }
+    const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+    const magic = view.getUint32(0, true);
+    if (magic !== 0x5053474e) {
+        throw new Error(`Invalid SPZ magic: 0x${magic.toString(16)}`);
+    }
+    return view.getUint32(4, true);
+}
 
 async function test() {
     console.log('🧪 Testing @gaussforge/wasm local package\n');
@@ -144,6 +159,26 @@ async function test() {
             }
         }
 
+        // 6. Test SPZ version selection
+        console.log('\n6️⃣  Testing SPZ version selection...');
+        for (const spzVersion of [2, 3, 4]) {
+            const convertResult = await gaussForge.convert(inputData, 'ply', 'spz', { spzVersion });
+            const actualVersion = getSpzVersion(convertResult.data);
+            if (actualVersion !== spzVersion) {
+                throw new Error(`Expected SPZ v${spzVersion}, got v${actualVersion}`);
+            }
+            const outputFile = path.join(__dirname, `output.v${spzVersion}.spz`);
+            fs.writeFileSync(outputFile, convertResult.data);
+            console.log(`   ✅ ply -> spz v${spzVersion}: ${convertResult.data.length} bytes`);
+        }
+
+        const defaultSpz = await gaussForge.convert(inputData, 'ply', 'spz');
+        const defaultVersion = getSpzVersion(defaultSpz.data);
+        if (defaultVersion !== 3) {
+            throw new Error(`Expected default SPZ v3, got v${defaultVersion}`);
+        }
+        console.log('   ✅ default SPZ version is v3');
+
         console.log('\n🎉 All tests completed!\n');
 
     } catch (error) {
@@ -154,4 +189,3 @@ async function test() {
 }
 
 test();
-

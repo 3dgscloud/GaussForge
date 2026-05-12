@@ -49,9 +49,14 @@ public:
     const auto err = ValidateBasic(ir, options.strict);
     if (!err.message.empty() && options.strict)
       return Expected<std::vector<uint8_t>>(err);
+    if (options.spzVersion < 2 || options.spzVersion > 4) {
+      return Expected<std::vector<uint8_t>>(
+          MakeError("spz write failed: spzVersion must be 2, 3, or 4"));
+    }
 
     spz::GaussianCloud g = ToSpz(ir);
     spz::PackOptions pack;
+    pack.version = options.spzVersion;
     std::vector<uint8_t> result;
     bool ok = spz::saveSpz(g, pack, &result);
     if (!ok) {

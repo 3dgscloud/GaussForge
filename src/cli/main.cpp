@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -102,6 +103,20 @@ std::string GetExt(const std::string &path) {
   return path.substr(pos + 1);
 }
 
+bool ParseSpzVersion(const std::string &value, uint32_t *version) {
+  try {
+    size_t parsed = 0;
+    const unsigned long parsed_value = std::stoul(value, &parsed, 10);
+    if (parsed != value.size() || parsed_value < 2 || parsed_value > 4) {
+      return false;
+    }
+    *version = static_cast<uint32_t>(parsed_value);
+    return true;
+  } catch (const std::exception &) {
+    return false;
+  }
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -176,7 +191,7 @@ int main(int argc, char **argv) {
 
   if (argc < 3) {
     std::cerr << "Usage: gfconvert <input> <output> "
-                 "[--in-format ext] [--out-format ext]\n";
+                 "[--in-format ext] [--out-format ext] [--spz-version 2|3|4]\n";
     std::cerr << "       gfconvert --info <input> [--format ext]\n";
     std::cerr << "       gfconvert --version\n";
     return 1;
@@ -186,14 +201,25 @@ int main(int argc, char **argv) {
   const std::string out_path = argv[2];
   std::string in_ext = GetExt(in_path);
   std::string out_ext = GetExt(out_path);
+  uint32_t spz_version = 3;
 
-  for (int i = 3; i + 1 < argc; i += 2) {
+  for (int i = 3; i < argc; i += 2) {
     const std::string flag = argv[i];
+    if (i + 1 >= argc) {
+      std::cerr << "Missing value for parameter: " << flag << "\n";
+      return 1;
+    }
     const std::string val = argv[i + 1];
     if (flag == "--in-format") {
       in_ext = val;
     } else if (flag == "--out-format") {
       out_ext = val;
+    } else if (flag == "--spz-version") {
+      if (!ParseSpzVersion(val, &spz_version)) {
+        std::cerr << "Invalid --spz-version: " << val
+                  << " (expected 2, 3, or 4)\n";
+        return 1;
+      }
     } else {
       std::cerr << "Unknown parameter: " << flag << "\n";
       return 1;
@@ -249,6 +275,7 @@ int main(int argc, char **argv) {
 
   // Serialize data using writer
   gf::WriteOptions write_opt;
+  write_opt.spzVersion = spz_version;
   auto out_data_or = writer->Write(ir, write_opt);
   if (!out_data_or) {
     std::cerr << "Write failed: " << out_data_or.error().message << "\n";

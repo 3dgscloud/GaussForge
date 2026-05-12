@@ -46,11 +46,15 @@ export interface ReadOptions {
 
 export interface WriteOptions {
     strict?: boolean;
+    /** SPZ output version. Only used when writing SPZ. Defaults to 3 for compatibility. */
+    spzVersion?: 2 | 3 | 4;
 }
 
 export interface ConvertOptions {
     strict?: boolean;
     includeInfo?: boolean;
+    /** SPZ output version. Only used when converting to SPZ. Defaults to 3 for compatibility. */
+    spzVersion?: 2 | 3 | 4;
 }
 
 // Model Info types
@@ -113,4 +117,3 @@ export interface ModelInfoResult {
 export interface ModelInfoOptions {
     fileSize?: number;
 }
-

@@ -56,17 +56,18 @@ Read Gaussian data from bytes.
 
 Returns a dict with `data` key containing the parsed Gaussian data, or `error` key on failure.
 
-### `write(ir: dict, format: str, strict: bool = False) -> dict`
+### `write(ir: dict, format: str, strict: bool = False, spz_version: int = 3) -> dict`
 
 Write Gaussian IR to bytes.
 
 - `ir`: Gaussian intermediate representation dict
 - `format`: Output format name
 - `strict`: Enable strict validation (default: False)
+- `spz_version`: SPZ output version when writing SPZ, one of 2, 3, or 4 (default: 3)
 
 Returns a dict with `data` key containing the encoded bytes, or `error` key on failure.
 
-### `convert(data: bytes, in_format: str, out_format: str, strict: bool = False) -> dict`
+### `convert(data: bytes, in_format: str, out_format: str, strict: bool = False, spz_version: int = 3) -> dict`
 
 Convert between formats directly.
 
@@ -74,6 +75,7 @@ Convert between formats directly.
 - `in_format`: Input format name
 - `out_format`: Output format name
 - `strict`: Enable strict validation (default: False)
+- `spz_version`: SPZ output version when converting to SPZ, one of 2, 3, or 4 (default: 3)
 
 Returns a dict with `data` key containing the converted bytes, or `error` key on failure.
 
